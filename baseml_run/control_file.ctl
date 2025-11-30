@@ -1,5 +1,5 @@
-seqfile = sequence.phy   * path to your alignment file
-     treefile = tree.nwk       * path to your tree file
+seqfile = ../fixed.phy   * path to your alignment file
+     treefile = ../tree.newick       * path to your tree file
       outfile = mlb            * main result file
 
         noisy = 2              * how much rubbish on the screen
