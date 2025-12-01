@@ -41,7 +41,7 @@ if not (OUTPUT_DIR := pathlib.Path(OUTPUT_DIR)).exists():
 print(f"Starting generation of {NUM_SIMULATIONS} datasets...")
 
 # Initialize Log File (CSV)
-log_path = os.path.join(OUTPUT_DIR, "ground_truth.csv")
+log_path = OUTPUT_DIR / "ground_truth.csv"
 with open(log_path, "w") as log:
     log.write("filename,true_alpha,true_rho\n")
 
@@ -85,7 +85,7 @@ for i in range(1, NUM_SIMULATIONS + 1):
     # D. Convert to PHYLIP and Save
     # Filename includes parameters for easy spotting, but ID is unique
     filename = f"sim_{i:03d}_a{true_alpha}_r{true_rho}.phy"
-    filepath = os.path.join(OUTPUT_DIR, filename)
+    filepath = OUTPUT_DIR / filename
     
     handle = StringIO(msa_str)
     
