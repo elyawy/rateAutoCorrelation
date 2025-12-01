@@ -1,4 +1,4 @@
-import os
+import pathlib
 import random
 import numpy as np
 from io import StringIO
@@ -6,6 +6,7 @@ from Bio import SeqIO
 
 # --- Hypothetical imports based on your snippet ---
 # Ensure msasim is installed in your environment
+
 try:
     from msasim import protocol 
     from msasim import simulator as sim
@@ -23,21 +24,16 @@ OUTPUT_DIR = "simulated_msas"
 TREE_FILE = "tree.newick"
 
 # Define ranges for random sampling
-ALPHA_RANGE = (0.1, 5.0)   # Min and Max Alpha
+ALPHA_RANGE = (0.1, 2.0)   # Min and Max Alpha
 RHO_RANGE = (0.01, 0.95)   # Min and Max Rho (avoid 1.0/0.0 strictly)
 
 # ==========================================
-# 1. SETUP & TREE GENERATION
+# 1. SETUP OUTPUT DIRECTORY
 # ==========================================
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
+if not (OUTPUT_DIR := pathlib.Path(OUTPUT_DIR)).exists():
+    OUTPUT_DIR.mkdir(parents=True)
 
-# Create a dummy 8-taxon tree if one doesn't exist (for testing)
-if not os.path.exists(TREE_FILE):
-    print(f"Creating dummy {TREE_FILE} with 8 sequences...")
-    dummy_tree = "(((Seq1:0.1,Seq2:0.1):0.1,(Seq3:0.1,Seq4:0.1):0.1):0.1,((Seq5:0.1,Seq6:0.1):0.1,(Seq7:0.1,Seq8:0.1):0.1):0.1);"
-    with open(TREE_FILE, "w") as f:
-        f.write(dummy_tree)
+
 
 # ==========================================
 # 2. SIMULATION LOOP
@@ -58,6 +54,7 @@ simulation_protocol.set_deletion_rates(0.0)
 current_seed = 42 
     # B. Configure Simulator
 simulation_protocol.set_seed(current_seed)
+random.seed(current_seed)
 simulator = sim.Simulator(simulation_protocol, simulation_type=sim.SIMULATION_TYPE.PROTEIN)
 
 
