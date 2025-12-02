@@ -30,4 +30,4 @@ RHO_RANGE = (0.01, 0.95)       # Min and Max Rho
 # BASEML PARAMETERS
 # ==========================================
 BASEML_TEMPLATE = "baseml_template.ctl"
-BASEML_EXECUTABLE = "baseml"   # Assumes baseml is in PATH
+BASEML_EXECUTABLE = "codeml"   # Assumes baseml is in PATH
