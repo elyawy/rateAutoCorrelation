@@ -7,6 +7,8 @@ For each tree and each simulation:
   - Create control file with correct paths
   - Run codeml
   - Log execution time
+
+Can be run for all trees or a single tree (for SLURM parallelization).
 """
 
 import pathlib
@@ -14,6 +16,7 @@ import shutil
 import subprocess
 import time
 import csv
+import argparse
 import config
 
 
@@ -124,6 +127,10 @@ def process_tree(tree_name, simulated_dir, trees_dir, codeml_runs_dir, template_
 
 def main():
     """Main function to run codeml on all simulations."""
+    parser = argparse.ArgumentParser(description='Run codeml on simulated data')
+    parser.add_argument('--tree', type=str, help='Process only this specific tree (for SLURM parallelization)')
+    args = parser.parse_args()
+    
     simulated_dir = pathlib.Path(config.SIMULATED_DATA_DIR)
     trees_dir = pathlib.Path(config.TREES_DIR)
     codeml_runs_dir = pathlib.Path(config.CODEML_RUNS_DIR)
@@ -137,8 +144,16 @@ def main():
         print(f"Error: {template_path} not found.")
         return
     
-    # Get all tree directories
-    tree_dirs = sorted([d for d in simulated_dir.iterdir() if d.is_dir()])
+    # Get tree directories to process
+    if args.tree:
+        # Process single tree (SLURM mode)
+        tree_dirs = [simulated_dir / args.tree]
+        if not tree_dirs[0].exists():
+            print(f"Error: Tree directory {tree_dirs[0]} does not exist.")
+            return
+    else:
+        # Process all trees (local mode)
+        tree_dirs = sorted([d for d in simulated_dir.iterdir() if d.is_dir()])
     
     if not tree_dirs:
         print(f"Error: No tree directories found in {simulated_dir}/")
