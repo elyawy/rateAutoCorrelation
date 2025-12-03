@@ -11,7 +11,7 @@ def clean():
     """Remove all generated directories."""
     dirs_to_remove = [
         config.SIMULATED_DATA_DIR,
-        config.BASEML_RUNS_DIR,
+        config.CODEML_RUNS_DIR,
         config.RESULTS_DIR
     ]
     

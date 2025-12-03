@@ -1,17 +1,22 @@
 """
-Step 2: Run baseml on all simulated MSAs.
+Step 2: Run codeml on all simulated MSAs.
 
 For each tree and each simulation:
-  - Create a run directory in baseml_runs/
+  - Create a run directory in codeml_runs/
   - Copy the alignment file
   - Create control file with correct paths
-  - Run baseml
+  - Run codeml
+  - Log execution time
 """
 
 import pathlib
 import shutil
 import subprocess
+import time
+import csv
 import config
+
+
 
 def create_control_file(template_path, run_dir, seq_file, tree_file):
     """Create a control file with proper paths."""
@@ -21,7 +26,9 @@ def create_control_file(template_path, run_dir, seq_file, tree_file):
     # Replace placeholders
     control_content = template.replace('SEQFILE_PLACEHOLDER', str(seq_file))
     control_content = control_content.replace('TREEFILE_PLACEHOLDER', str(tree_file))
-    
+    control_content = control_content.replace('WAGFILE_PLACEHOLDER', str(config.WAGDAT_FILE))
+
+
     # Write to run directory
     control_path = run_dir / 'control.ctl'
     with open(control_path, 'w') as f:
@@ -29,25 +36,32 @@ def create_control_file(template_path, run_dir, seq_file, tree_file):
     
     return control_path
 
-def run_baseml(control_file, run_dir):
-    """Execute baseml in the run directory."""
+def run_codeml(control_file, run_dir):
+    """Execute codeml in the run directory and return success status and elapsed time."""
+    start_time = time.time()
+    
     try:
         result = subprocess.run(
-            [config.BASEML_EXECUTABLE, str(control_file.name)],
+            [config.CODEML_EXECUTABLE, str(control_file.name)],
             cwd=run_dir,
             capture_output=True,
             text=True,
             timeout=300  # 5 minute timeout per run
         )
-        return result.returncode == 0
+        elapsed_time = time.time() - start_time
+        return result.returncode == 0, elapsed_time
+    
     except subprocess.TimeoutExpired:
+        elapsed_time = time.time() - start_time
         print(f"    WARNING: Timeout exceeded")
-        return False
+        return False, elapsed_time
+    
     except FileNotFoundError:
-        print(f"    ERROR: {config.BASEML_EXECUTABLE} not found. Is it in your PATH?")
-        return False
+        elapsed_time = time.time() - start_time
+        print(f"    ERROR: {config.CODEML_EXECUTABLE} not found. Is it in your PATH?")
+        return False, elapsed_time
 
-def process_tree(tree_name, simulated_dir, trees_dir, baseml_runs_dir, template_path):
+def process_tree(tree_name, simulated_dir, trees_dir, codeml_runs_dir, template_path):
     """Process all simulations for a single tree."""
     tree_sim_dir = simulated_dir / tree_name
     tree_file = trees_dir / f"{tree_name}.newick"
@@ -66,42 +80,54 @@ def process_tree(tree_name, simulated_dir, trees_dir, baseml_runs_dir, template_
     success_count = 0
     total_count = len(sim_files)
     
-    for sim_file in sim_files:
-        sim_name = sim_file.stem  # e.g., sim_001_a0.5_r0.3
-        
-        # Create run directory
-        run_dir = baseml_runs_dir / tree_name / sim_name
-        run_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Copy alignment file to run directory
-        shutil.copy(sim_file, run_dir / sim_file.name)
-        
-        # Create control file
-        control_file = create_control_file(
-            template_path,
-            run_dir,
-            sim_file.name,  # relative path within run_dir
-            tree_file.resolve()  # absolute path to tree
-        )
-        
-        # Run baseml
-        success = run_baseml(control_file, run_dir)
-        
-        if success:
-            success_count += 1
-        
-        # Progress indicator
-        if (sim_files.index(sim_file) + 1) % 10 == 0:
-            print(f"    Completed {sim_files.index(sim_file) + 1}/{total_count} runs")
+    # Prepare timing log
+    timing_log_path = codeml_runs_dir / tree_name / 'timing.csv'
+    timing_log_path.parent.mkdir(parents=True, exist_ok=True)
     
+    with open(timing_log_path, 'w', newline='') as timing_file:
+        timing_writer = csv.writer(timing_file)
+        timing_writer.writerow(['simulation', 'success', 'time_seconds'])
+        
+        for sim_file in sim_files:
+            sim_name = sim_file.stem  # e.g., sim_001_a0.5_r0.3
+            
+            # Create run directory
+            run_dir = codeml_runs_dir / tree_name / sim_name
+            run_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Copy alignment file to run directory
+            shutil.copy(sim_file, run_dir / sim_file.name)
+            
+            # Create control file
+            control_file = create_control_file(
+                template_path,
+                run_dir,
+                sim_file.name,  # relative path within run_dir
+                tree_file.resolve()  # absolute path to tree
+            )
+            
+            # Run codeml and get timing
+            success, elapsed_time = run_codeml(control_file, run_dir)
+            
+            # Log timing
+            timing_writer.writerow([sim_name, success, f'{elapsed_time:.3f}'])
+            
+            if success:
+                success_count += 1
+            
+            # Progress indicator
+            if (sim_files.index(sim_file) + 1) % 10 == 0:
+                print(f"    Completed {sim_files.index(sim_file) + 1}/{total_count} runs")
+    
+    print(f"  Timing log saved to: {timing_log_path}")
     return success_count, total_count
 
 def main():
-    """Main function to run baseml on all simulations."""
+    """Main function to run codeml on all simulations."""
     simulated_dir = pathlib.Path(config.SIMULATED_DATA_DIR)
     trees_dir = pathlib.Path(config.TREES_DIR)
-    baseml_runs_dir = pathlib.Path(config.BASEML_RUNS_DIR)
-    template_path = pathlib.Path(config.BASEML_TEMPLATE)
+    codeml_runs_dir = pathlib.Path(config.CODEML_RUNS_DIR)
+    template_path = pathlib.Path(config.CODEML_TEMPLATE)
     
     if not simulated_dir.exists():
         print(f"Error: {simulated_dir}/ does not exist. Run step 1 first.")
@@ -133,7 +159,7 @@ def main():
             tree_name,
             simulated_dir,
             trees_dir,
-            baseml_runs_dir,
+            codeml_runs_dir,
             template_path
         )
         
@@ -144,7 +170,7 @@ def main():
     
     print("\n" + "=" * 50)
     print(f"All runs complete: {total_success}/{total_runs} successful")
-    print(f"Output directory: {baseml_runs_dir}/")
+    print(f"Output directory: {codeml_runs_dir}/")
 
 if __name__ == "__main__":
     main()

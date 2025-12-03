@@ -68,7 +68,7 @@ def simulate_for_tree(tree_path, output_dir, tree_seed):
         simulator.set_replacement_model(
             model=sim.MODEL_CODES.WAG,
             gamma_parameters_alpha=true_alpha,
-            gamma_parameters_categories=4,
+            gamma_parameters_categories=8,
             site_rate_correlation=true_rho
         )
         
