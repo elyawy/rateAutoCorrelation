@@ -1,5 +1,5 @@
 """
-Step 3: Extract inferred alpha and rho from baseml output files.
+Step 3: Extract inferred alpha and rho from codeml output files.
 
 Parse all mlb files and extract:
   - Tree name
@@ -15,9 +15,9 @@ import re
 import pandas as pd
 import config
 
-def parse_baseml_output(mlb_file):
+def parse_codeml_output(mlb_file):
     """
-    Parse a baseml output file and extract alpha and rho.
+    Parse a codeml output file and extract alpha and rho.
     
     Returns:
         tuple: (alpha, rho) or (None, None) if parsing fails
@@ -28,12 +28,11 @@ def parse_baseml_output(mlb_file):
         
         # Look for alpha in the output
         # Pattern: "alpha (gamma)" or similar
-        alpha_match = re.search(r'alpha\s*\(gamma\)\s*=\s*([\d.]+)', content, re.IGNORECASE)
-        
+        # Match alpha(gamma...) with anything inside the parentheses
+        alpha_match = re.search(r'alpha\s*\([^)]*gamma[^)]*\)\s*=\s*([\d.]+)', content, re.IGNORECASE)
         # Look for rho in the output
-        # Pattern: "rho (c)" or similar
-        rho_match = re.search(r'rho\s*\(c\)\s*=\s*([\d.]+)', content, re.IGNORECASE)
-        
+        # Pattern: "correlation" or similar
+        rho_match = re.search(r'rho\s*\(correlation\)\s*=\s*([\d.]+)', content, re.IGNORECASE)        
         alpha = float(alpha_match.group(1)) if alpha_match else None
         rho = float(rho_match.group(1)) if rho_match else None
         
@@ -43,9 +42,9 @@ def parse_baseml_output(mlb_file):
         print(f"    Error parsing {mlb_file}: {e}")
         return None, None
 
-def extract_all_parameters(baseml_runs_dir):
+def extract_all_parameters(codeml_runs_dir):
     """
-    Extract parameters from all baseml runs.
+    Extract parameters from all codeml runs.
     
     Returns:
         list: List of dicts with tree, simulation, alpha, rho
@@ -53,7 +52,7 @@ def extract_all_parameters(baseml_runs_dir):
     results = []
     
     # Iterate through all tree directories
-    for tree_dir in sorted(baseml_runs_dir.iterdir()):
+    for tree_dir in sorted(codeml_runs_dir.iterdir()):
         if not tree_dir.is_dir():
             continue
         
@@ -74,8 +73,8 @@ def extract_all_parameters(baseml_runs_dir):
                 continue
             
             # Parse the output
-            alpha, rho = parse_baseml_output(mlb_file)
-            
+            alpha, rho = parse_codeml_output(mlb_file)
+            print(alpha, rho)
             if alpha is None or rho is None:
                 print(f"  WARNING: Could not extract parameters from {sim_name}")
                 continue
@@ -93,21 +92,21 @@ def extract_all_parameters(baseml_runs_dir):
 
 def main():
     """Main function to extract all parameters."""
-    baseml_runs_dir = pathlib.Path(config.BASEML_RUNS_DIR)
+    codeml_runs_dir = pathlib.Path(config.CODEML_RUNS_DIR)
     results_dir = pathlib.Path(config.RESULTS_DIR)
     
-    if not baseml_runs_dir.exists():
-        print(f"Error: {baseml_runs_dir}/ does not exist. Run step 2 first.")
+    if not codeml_runs_dir.exists():
+        print(f"Error: {codeml_runs_dir}/ does not exist. Run step 2 first.")
         return
     
-    print("Extracting parameters from baseml outputs...")
+    print("Extracting parameters from codeml outputs...")
     print("=" * 50)
     
     # Extract all parameters
-    results = extract_all_parameters(baseml_runs_dir)
+    results = extract_all_parameters(codeml_runs_dir)
     
     if not results:
-        print("\nError: No results extracted. Check baseml outputs.")
+        print("\nError: No results extracted. Check codeml outputs.")
         return
     
     # Create results directory
