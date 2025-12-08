@@ -20,7 +20,7 @@ TREE_NAME=$(basename "$TREE_DIR")
 
 echo "Processing tree: $TREE_NAME"
 
-python 2_run_codeml.py --tree "$TREE_NAME"
+srun python 2_run_codeml.py --tree "$TREE_NAME"
 
 # to run this script as an array job, use the following command:
 # Make sure to create the slurm_logs directory before running the job:
