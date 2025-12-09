@@ -2,3 +2,4 @@ __pycache__
 simulated_data
 codeml_runs
 trees_old
+inference_pipeline/results
