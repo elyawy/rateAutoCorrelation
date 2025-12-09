@@ -46,6 +46,42 @@ def calculate_column_entropy(column):
     return entropy
 
 
+def calculate_lag1_autocorr(entropies):
+    """
+    Calculate lag-1 autocorrelation of entropy values.
+    
+    This captures spatial correlation between neighboring sites,
+    which is theoretically linked to the rho parameter (Markov process).
+    
+    Args:
+        entropies: numpy array of per-site entropy values
+        
+    Returns:
+        float: Lag-1 autocorrelation coefficient, or 0.0 if calculation fails
+    """
+    if len(entropies) < 2:
+        return 0.0
+    
+    # Original sequence (exclude last value)
+    original = entropies[:-1]
+    
+    # Lagged sequence (exclude first value)
+    lagged = entropies[1:]
+    
+    # Calculate Pearson correlation
+    # Handle edge case where variance is zero
+    if np.std(original) == 0 or np.std(lagged) == 0:
+        return 0.0
+    
+    correlation = np.corrcoef(original, lagged)[0, 1]
+    
+    # Handle NaN (shouldn't happen, but just in case)
+    if np.isnan(correlation):
+        return 0.0
+    
+    return float(correlation)
+
+
 def calculate_msa_entropy_stats(sequences):
     """
     Calculate entropy statistics for an entire MSA.
@@ -54,19 +90,20 @@ def calculate_msa_entropy_stats(sequences):
         sequences: List of sequence strings (aligned, same length)
         
     Returns:
-        dict: Contains 'avg_entropy', 'entropy_variance', 'min_entropy', 'max_entropy'
+        dict: Contains 'avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr'
         
     Process:
         1. Iterate through each column
         2. Calculate entropy for each column
         3. Compute statistics across all column entropies
+        4. Calculate lag-1 autocorrelation
     """
     if not sequences or len(sequences) == 0:
         return {
             'avg_entropy': 0.0,
             'entropy_variance': 0.0,
-            'min_entropy': 0.0,
-            'max_entropy': 0.0
+            'max_entropy': 0.0,
+            'lag1_autocorr': 0.0
         }
     
     # Get alignment length
@@ -90,8 +127,8 @@ def calculate_msa_entropy_stats(sequences):
     stats = {
         'avg_entropy': float(np.mean(entropies)),
         'entropy_variance': float(np.var(entropies, ddof=1)),  # Sample variance
-        'min_entropy': float(np.min(entropies)),
-        'max_entropy': float(np.max(entropies))
+        'max_entropy': float(np.max(entropies)),
+        'lag1_autocorr': calculate_lag1_autocorr(entropies)
     }
     
     return stats

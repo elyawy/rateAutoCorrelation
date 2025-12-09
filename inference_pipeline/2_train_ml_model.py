@@ -133,7 +133,7 @@ def main():
         return
     
     # Prepare features and targets
-    feature_columns = ['avg_entropy', 'entropy_variance', 'min_entropy', 'max_entropy']
+    feature_columns = ['avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr']
     X = merged[feature_columns].values
     y_alpha = merged['true_alpha'].values
     y_rho = merged['true_rho'].values

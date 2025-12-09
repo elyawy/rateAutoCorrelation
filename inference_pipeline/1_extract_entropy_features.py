@@ -49,8 +49,8 @@ def process_tree(tree_dir):
                 'simulation': sim_name,
                 'avg_entropy': stats['avg_entropy'],
                 'entropy_variance': stats['entropy_variance'],
-                'min_entropy': stats['min_entropy'],
-                'max_entropy': stats['max_entropy']
+                'max_entropy': stats['max_entropy'],
+                'lag1_autocorr': stats['lag1_autocorr']
             })
             
             # Progress update
@@ -119,7 +119,7 @@ def main():
     
     # Display summary statistics
     print("\nFeature Summary:")
-    print(df[['avg_entropy', 'entropy_variance', 'min_entropy', 'max_entropy']].describe())
+    print(df[['avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr']].describe())
 
 
 if __name__ == "__main__":
