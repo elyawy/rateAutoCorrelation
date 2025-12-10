@@ -145,12 +145,8 @@ def main():
     )
     print(f"\nMerged features + ground truth: {len(merged)} samples")
     
-    # Generate ML predictions for all samples
-    feature_columns = [
-        'avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr',
-        'avg_parsimony_score', 'var_parsimony_score', 
-        'lag1_parsimony_autocorr', 'parsimony_entropy_correlation'
-    ]
+    # Generate ML predictions for all samples using FEATURE_COLUMNS from config
+    feature_columns = local_config.FEATURE_COLUMNS
     X = merged[feature_columns].values
     
     merged['ml_alpha'] = alpha_model.predict(X)

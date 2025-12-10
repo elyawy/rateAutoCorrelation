@@ -4,6 +4,7 @@ Step 1: Extract entropy and parsimony features from simulated MSAs.
 For each simulated MSA:
   - Calculate Shannon entropy statistics
   - Calculate parsimony-based statistics
+  - Calculate gamma shape features (NEW!)
   - Save features to results/features.csv
 
 These features will be used for training a model to infer alpha and rho.
@@ -20,6 +21,8 @@ from features_calculator import (
     calculate_msa_entropy_stats,
     calculate_msa_parsimony_stats,
     calculate_parsimony_entropy_correlation,
+    calculate_gamma_shape_features,
+    calculate_entropy_quantile_features,
     read_phylip_sequences
 )
 
@@ -46,11 +49,27 @@ def process_single_simulation(sim_file, tree_file):
         # Calculate entropy statistics
         entropy_stats = calculate_msa_entropy_stats(sequences)
         
+        # Get entropy array for quantile features
+        n_columns = len(sequences[0])
+        entropies = []
+        for col_idx in range(n_columns):
+            from features_calculator import calculate_column_entropy
+            column = [seq[col_idx] for seq in sequences]
+            entropy = calculate_column_entropy(column)
+            entropies.append(entropy)
+        entropies_array = __import__('numpy').array(entropies)
+        
+        # Calculate quantile features
+        quantile_features = calculate_entropy_quantile_features(entropies_array)
+        
         # Calculate parsimony statistics
-        parsimony_stats = calculate_msa_parsimony_stats(sequences, tree_file)
+        # parsimony_stats = calculate_msa_parsimony_stats(sequences, tree_file)
         
         # Calculate parsimony-entropy correlation
-        pars_entr_corr = calculate_parsimony_entropy_correlation(sequences, tree_file)
+        # pars_entr_corr = calculate_parsimony_entropy_correlation(sequences, tree_file)
+        
+        # Calculate gamma shape features
+        gamma_features = calculate_gamma_shape_features(sequences, tree_file)
         
         # Combine all features
         return {
@@ -62,10 +81,19 @@ def process_single_simulation(sim_file, tree_file):
             'max_entropy': entropy_stats['max_entropy'],
             'lag1_autocorr': entropy_stats['lag1_autocorr'],
             # Parsimony features
-            'avg_parsimony_score': parsimony_stats['avg_parsimony_score'],
-            'var_parsimony_score': parsimony_stats['var_parsimony_score'],
-            'lag1_parsimony_autocorr': parsimony_stats['lag1_parsimony_autocorr'],
-            'parsimony_entropy_correlation': pars_entr_corr
+            # 'avg_parsimony_score': parsimony_stats['avg_parsimony_score'],
+            # 'var_parsimony_score': parsimony_stats['var_parsimony_score'],
+            # 'lag1_parsimony_autocorr': parsimony_stats['lag1_parsimony_autocorr'],
+            # 'parsimony_entropy_correlation': pars_entr_corr,
+            # Gamma shape features
+            'gamma_shape_entropy': gamma_features['gamma_shape_entropy'],
+            # 'gamma_shape_parsimony': gamma_features['gamma_shape_parsimony'],
+            # Quantile features (NEW!)
+            'entropy_q25': quantile_features['entropy_q25'],
+            'entropy_q50': quantile_features['entropy_q50'],
+            'entropy_q75': quantile_features['entropy_q75'],
+            'entropy_iqr': quantile_features['entropy_iqr'],
+            'entropy_cv': quantile_features['entropy_cv'],
         }
     
     except Exception as e:
@@ -153,7 +181,8 @@ def main():
         print(f"Error: {trees_dir}/ does not exist.")
         return
     
-    print("Extracting entropy and parsimony features from simulated MSAs...")
+    print("Extracting features from simulated MSAs...")
+    print(f"Feature set: {len(config.FEATURE_COLUMNS)} features")
     print(f"Using {args.cores} CPU cores for parallel processing")
     print("=" * 50)
     
@@ -199,12 +228,7 @@ def main():
     
     # Display summary statistics
     print("\nFeature Summary:")
-    feature_cols = [
-        'avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr',
-        'avg_parsimony_score', 'var_parsimony_score', 
-        'lag1_parsimony_autocorr', 'parsimony_entropy_correlation'
-    ]
-    print(df[feature_cols].describe())
+    print(df[config.FEATURE_COLUMNS].describe())
 
 
 if __name__ == "__main__":

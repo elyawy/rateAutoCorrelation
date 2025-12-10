@@ -212,10 +212,8 @@ def main():
     print(f"  Training samples: {len(train_data)}")
     print(f"  Test samples: {len(test_data) if test_data is not None else 0}")
     
-    # Prepare features and targets
-    feature_columns = ['avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr',
-                       'avg_parsimony_score', 'var_parsimony_score', 
-                       'lag1_parsimony_autocorr', 'parsimony_entropy_correlation']
+    # Use FEATURE_COLUMNS from config
+    feature_columns = local_config.FEATURE_COLUMNS
     
     X_train = train_data[feature_columns].values
     y_alpha_train = train_data['true_alpha'].values
@@ -233,7 +231,9 @@ def main():
         y_rho_test = y_rho_train[:1]
     
     print(f"\nFeatures shape: Train {X_train.shape}, Test {X_test.shape if test_data is not None else 'N/A'}")
-    print(f"Feature columns: {feature_columns}")
+    print(f"Feature columns ({len(feature_columns)}):")
+    for fc in feature_columns:
+        print(f"  - {fc}")
     
     print("\n" + "=" * 50)
     print("Training Alpha Model with Hyperparameter Tuning...")

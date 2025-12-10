@@ -83,6 +83,39 @@ def calculate_lag1_autocorr(values):
     return float(correlation)
 
 
+def fit_gamma_to_values(values):
+    """
+    Fit a continuous gamma distribution to values and return shape parameter.
+    
+    This approximates the discrete gamma used in simulations.
+    
+    Args:
+        values: numpy array of positive values (e.g., entropy or parsimony scores)
+        
+    Returns:
+        float: Gamma shape parameter (alpha), or 0.0 if fitting fails
+    """
+    from scipy import stats
+    
+    # Filter out zeros and negatives (shouldn't happen, but be safe)
+    valid_values = values[values > 0]
+    
+    if len(valid_values) < 10:  # Need enough data points
+        return 0.0
+    
+    try:
+        # Fit gamma distribution using MLE
+        # Returns: (shape, loc, scale)
+        shape, loc, scale = stats.gamma.fit(valid_values, floc=0)  # Fix location at 0
+        
+        # Return shape parameter (this is the alpha we want)
+        return float(shape)
+    
+    except Exception:
+        # Fitting failed (numerical issues, etc.)
+        return 0.0
+
+
 def fitch_parsimony_column(column, tree):
     """
     Calculate Fitch parsimony score for a single alignment column.
@@ -201,6 +234,54 @@ def calculate_msa_parsimony_scores(sequences, tree_file):
             scores.append(score)
     
     return np.array(scores)
+
+
+def calculate_entropy_quantile_features(entropies):
+    """
+    Calculate quantile-based features from entropy distribution.
+    
+    Captures the shape of the entropy distribution using percentiles,
+    which should relate to the underlying gamma shape parameter (alpha).
+    
+    Args:
+        entropies: numpy array of entropy values
+        
+    Returns:
+        dict: Contains quantile features and coefficient of variation
+    """
+    # Filter positive entropies
+    valid_entropies = entropies[entropies > 0]
+    
+    if len(valid_entropies) < 10:
+        return {
+            'entropy_q25': 0.0,
+            'entropy_q50': 0.0,
+            'entropy_q75': 0.0,
+            'entropy_iqr': 0.0,
+            'entropy_cv': 0.0
+        }
+    
+    # Calculate quantiles
+    q25 = float(np.percentile(valid_entropies, 25))
+    q50 = float(np.percentile(valid_entropies, 50))  # median
+    q75 = float(np.percentile(valid_entropies, 75))
+    
+    # Interquartile range (measure of spread)
+    iqr = q75 - q25
+    
+    # Coefficient of variation (normalized variability)
+    # CV = std / mean - directly measures relative dispersion
+    mean_val = np.mean(valid_entropies)
+    std_val = np.std(valid_entropies)
+    cv = float(std_val / mean_val) if mean_val > 0 else 0.0
+    
+    return {
+        'entropy_q25': q25,
+        'entropy_q50': q50,
+        'entropy_q75': q75,
+        'entropy_iqr': iqr,
+        'entropy_cv': cv
+    }
 
 
 def calculate_msa_entropy_stats(sequences):
@@ -340,6 +421,43 @@ def calculate_parsimony_entropy_correlation(sequences, tree_file):
     return float(correlation)
 
 
+def calculate_gamma_shape_features(sequences, tree_file):
+    """
+    Fit gamma distributions to entropy and parsimony values.
+    
+    Returns shape parameters which should correlate with the true alpha parameter.
+    
+    Args:
+        sequences: List of sequence strings (aligned, same length)
+        tree_file: Path to Newick tree file
+        
+    Returns:
+        dict: Contains 'gamma_shape_entropy' and 'gamma_shape_parsimony'
+    """
+    # Get entropy values for all columns
+    n_columns = len(sequences[0])
+    entropies = []
+    for col_idx in range(n_columns):
+        column = [seq[col_idx] for seq in sequences]
+        entropy = calculate_column_entropy(column)
+        if entropy > 0:  # Only include non-zero entropies
+            entropies.append(entropy)
+    
+    entropies = np.array(entropies)
+    
+    # Get parsimony scores
+    # parsimony_scores = calculate_msa_parsimony_scores(sequences, tree_file)
+    
+    # Fit gamma distributions
+    gamma_shape_entropy = fit_gamma_to_values(entropies)
+    # gamma_shape_parsimony = fit_gamma_to_values(parsimony_scores)
+    
+    return {
+        'gamma_shape_entropy': gamma_shape_entropy,
+        # 'gamma_shape_parsimony': gamma_shape_parsimony
+    }
+
+
 def read_phylip_sequences(phylip_file):
     """
     Read sequences from a PHYLIP format file.
@@ -367,7 +485,6 @@ if __name__ == "__main__":
         "ACDEFGHIKLMNPQRSTV--",
         "ACDEFGHIKLMNPQRSTVWY"
     ]
-    calculate_msa_parsimony_stats
     stats = calculate_msa_entropy_stats(example_sequences)
     print("Entropy Statistics:")
     print(stats)
