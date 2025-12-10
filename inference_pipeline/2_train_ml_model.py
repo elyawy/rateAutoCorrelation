@@ -20,13 +20,16 @@ import pandas as pd
 import numpy as np
 import pickle
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import sys
 
-# Import parent config
+# Import local config (inference_pipeline/config.py)
+import config as local_config
+
+# Import parent config for SIMULATED_DATA_DIR
 sys.path.append('..')
-import config
+import config as parent_config
+
 
 def load_ground_truth(simulated_data_dir):
     """
@@ -62,6 +65,7 @@ def load_ground_truth(simulated_data_dir):
     
     return pd.concat(all_truth, ignore_index=True)
 
+
 def train_and_evaluate_model(X_train, X_test, y_train, y_test, param_name, random_state=42):
     """
     Train a RandomForestRegressor and return model + metrics.
@@ -94,13 +98,14 @@ def train_and_evaluate_model(X_train, X_test, y_train, y_test, param_name, rando
     
     return model, metrics
 
+
 def main():
     """Main function to train ML models."""
     
     # Paths
     results_dir = pathlib.Path('results')
     entropy_file = results_dir / 'entropy_features.csv'
-    simulated_data_dir = config.SIMULATED_DATA_DIR
+    simulated_data_dir = parent_config.SIMULATED_DATA_DIR
     
     # Check if entropy file exists
     if not entropy_file.exists():
@@ -132,26 +137,54 @@ def main():
         print("Error: No matching data found after merge.")
         return
     
+    # Split trees into train/test sets
+    all_trees = sorted(merged['tree'].unique())
+    n_train_trees = local_config.N_TRAIN_TREES
+    
+    if n_train_trees >= len(all_trees):
+        print(f"\nWarning: N_TRAIN_TREES ({n_train_trees}) >= total trees ({len(all_trees)})")
+        print("Using all trees for training. No held-out test set.")
+        train_trees = all_trees
+        test_trees = []
+    else:
+        train_trees = all_trees[:n_train_trees]
+        test_trees = all_trees[n_train_trees:]
+    
+    print(f"\nTree split:")
+    print(f"  Total trees: {len(all_trees)}")
+    print(f"  Training trees: {len(train_trees)} (first {n_train_trees})")
+    print(f"  Test trees: {len(test_trees)} (held-out)")
+    print(f"\nTraining trees: {train_trees[:5]}{'...' if len(train_trees) > 5 else ''}")
+    if test_trees:
+        print(f"Test trees: {test_trees[:5]}{'...' if len(test_trees) > 5 else ''}")
+    
+    # Filter data by tree membership
+    train_data = merged[merged['tree'].isin(train_trees)].copy()
+    test_data = merged[merged['tree'].isin(test_trees)].copy() if test_trees else None
+    
+    print(f"\nData split:")
+    print(f"  Training samples: {len(train_data)}")
+    print(f"  Test samples: {len(test_data) if test_data is not None else 0}")
+    
     # Prepare features and targets
     feature_columns = ['avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr']
-    X = merged[feature_columns].values
-    y_alpha = merged['true_alpha'].values
-    y_rho = merged['true_rho'].values
     
-    print(f"\nFeatures shape: {X.shape}")
+    X_train = train_data[feature_columns].values
+    y_alpha_train = train_data['true_alpha'].values
+    y_rho_train = train_data['true_rho'].values
+    
+    if test_data is not None and len(test_data) > 0:
+        X_test = test_data[feature_columns].values
+        y_alpha_test = test_data['true_alpha'].values
+        y_rho_test = test_data['true_rho'].values
+    else:
+        # No test set - use dummy values (won't be used)
+        X_test = X_train[:1]
+        y_alpha_test = y_alpha_train[:1]
+        y_rho_test = y_rho_train[:1]
+    
+    print(f"\nFeatures shape: Train {X_train.shape}, Test {X_test.shape if test_data is not None else 'N/A'}")
     print(f"Feature columns: {feature_columns}")
-    
-    # Train/test split (80/20)
-    random_state = 42
-    X_train, X_test, y_alpha_train, y_alpha_test = train_test_split(
-        X, y_alpha, test_size=0.2, random_state=random_state
-    )
-    _, _, y_rho_train, y_rho_test = train_test_split(
-        X, y_rho, test_size=0.2, random_state=random_state
-    )
-    
-    print(f"\nTrain set size: {len(X_train)}")
-    print(f"Test set size: {len(X_test)}")
     
     print("\n" + "=" * 50)
     print("Training Alpha Model...")
@@ -159,14 +192,15 @@ def main():
     
     alpha_model, alpha_metrics = train_and_evaluate_model(
         X_train, X_test, y_alpha_train, y_alpha_test, 
-        'alpha', random_state
+        'alpha', random_state=42
     )
     
     print(f"\nAlpha Model Performance:")
     print(f"  Train R²: {alpha_metrics['train_r2']:.4f}")
-    print(f"  Test R²:  {alpha_metrics['test_r2']:.4f}")
-    print(f"  Test RMSE: {alpha_metrics['test_rmse']:.4f}")
-    print(f"  Test MAE:  {alpha_metrics['test_mae']:.4f}")
+    if test_data is not None and len(test_data) > 0:
+        print(f"  Test R² (held-out trees):  {alpha_metrics['test_r2']:.4f}")
+        print(f"  Test RMSE: {alpha_metrics['test_rmse']:.4f}")
+        print(f"  Test MAE:  {alpha_metrics['test_mae']:.4f}")
     
     print(f"\nFeature Importance (Alpha):")
     for feat, imp in zip(feature_columns, alpha_model.feature_importances_):
@@ -178,14 +212,15 @@ def main():
     
     rho_model, rho_metrics = train_and_evaluate_model(
         X_train, X_test, y_rho_train, y_rho_test, 
-        'rho', random_state
+        'rho', random_state=42
     )
     
     print(f"\nRho Model Performance:")
     print(f"  Train R²: {rho_metrics['train_r2']:.4f}")
-    print(f"  Test R²:  {rho_metrics['test_r2']:.4f}")
-    print(f"  Test RMSE: {rho_metrics['test_rmse']:.4f}")
-    print(f"  Test MAE:  {rho_metrics['test_mae']:.4f}")
+    if test_data is not None and len(test_data) > 0:
+        print(f"  Test R² (held-out trees):  {rho_metrics['test_r2']:.4f}")
+        print(f"  Test RMSE: {rho_metrics['test_rmse']:.4f}")
+        print(f"  Test MAE:  {rho_metrics['test_mae']:.4f}")
     
     print(f"\nFeature Importance (Rho):")
     for feat, imp in zip(feature_columns, rho_model.feature_importances_):
@@ -212,9 +247,19 @@ def main():
     metrics_df.to_csv(metrics_file, index=False)
     print(f"  Evaluation metrics saved to: {metrics_file}")
     
+    # Save tree split information
+    tree_split_file = results_dir / 'tree_split.csv'
+    tree_split_df = pd.DataFrame({
+        'tree': all_trees,
+        'split': ['train' if t in train_trees else 'test' for t in all_trees]
+    })
+    tree_split_df.to_csv(tree_split_file, index=False)
+    print(f"  Tree split info saved to: {tree_split_file}")
+    
     print("\n" + "=" * 50)
     print("Training complete!")
     print("=" * 50)
+
 
 if __name__ == "__main__":
     main()
