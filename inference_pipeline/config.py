@@ -29,22 +29,11 @@ FEATURE_COLUMNS = [
     # Entropy-based features
     'avg_entropy',
     'entropy_variance',
-    # 'max_entropy',
     'lag1_autocorr',
-    # Parsimony-based features (expensive to compute)
-    # 'avg_parsimony_score',
-    # 'var_parsimony_score',
-    # 'lag1_parsimony_autocorr',
-    # 'parsimony_entropy_correlation',
-    # Gamma shape features
-    'gamma_shape_entropy',
-    # 'gamma_shape_parsimony',
-    # Quantile features (NEW! - capture distribution shape)
-    'entropy_q25',
-    'entropy_q50',
-    'entropy_q75',
-    'entropy_iqr',
-    'entropy_cv',
+    'entropy_skewness',
+    'entropy_kurtosis',
+    # Alignment features
+    'bimodality_coefficient',
 ]
 
 # ==========================================

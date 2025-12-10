@@ -19,10 +19,6 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import config
 from features_calculator import (
     calculate_msa_entropy_stats,
-    calculate_msa_parsimony_stats,
-    calculate_parsimony_entropy_correlation,
-    calculate_gamma_shape_features,
-    calculate_entropy_quantile_features,
     read_phylip_sequences
 )
 
@@ -48,29 +44,7 @@ def process_single_simulation(sim_file, tree_file):
         
         # Calculate entropy statistics
         entropy_stats = calculate_msa_entropy_stats(sequences)
-        
-        # Get entropy array for quantile features
-        n_columns = len(sequences[0])
-        entropies = []
-        for col_idx in range(n_columns):
-            from features_calculator import calculate_column_entropy
-            column = [seq[col_idx] for seq in sequences]
-            entropy = calculate_column_entropy(column)
-            entropies.append(entropy)
-        entropies_array = __import__('numpy').array(entropies)
-        
-        # Calculate quantile features
-        quantile_features = calculate_entropy_quantile_features(entropies_array)
-        
-        # Calculate parsimony statistics
-        # parsimony_stats = calculate_msa_parsimony_stats(sequences, tree_file)
-        
-        # Calculate parsimony-entropy correlation
-        # pars_entr_corr = calculate_parsimony_entropy_correlation(sequences, tree_file)
-        
-        # Calculate gamma shape features
-        gamma_features = calculate_gamma_shape_features(sequences, tree_file)
-        
+                
         # Combine all features
         return {
             'tree': tree_name,
@@ -80,20 +54,9 @@ def process_single_simulation(sim_file, tree_file):
             'entropy_variance': entropy_stats['entropy_variance'],
             'max_entropy': entropy_stats['max_entropy'],
             'lag1_autocorr': entropy_stats['lag1_autocorr'],
-            # Parsimony features
-            # 'avg_parsimony_score': parsimony_stats['avg_parsimony_score'],
-            # 'var_parsimony_score': parsimony_stats['var_parsimony_score'],
-            # 'lag1_parsimony_autocorr': parsimony_stats['lag1_parsimony_autocorr'],
-            # 'parsimony_entropy_correlation': pars_entr_corr,
-            # Gamma shape features
-            'gamma_shape_entropy': gamma_features['gamma_shape_entropy'],
-            # 'gamma_shape_parsimony': gamma_features['gamma_shape_parsimony'],
-            # Quantile features (NEW!)
-            'entropy_q25': quantile_features['entropy_q25'],
-            'entropy_q50': quantile_features['entropy_q50'],
-            'entropy_q75': quantile_features['entropy_q75'],
-            'entropy_iqr': quantile_features['entropy_iqr'],
-            'entropy_cv': quantile_features['entropy_cv'],
+            'entropy_skewness': entropy_stats['entropy_skewness'],
+            'entropy_kurtosis': entropy_stats['entropy_kurtosis'],
+            'bimodality_coefficient': entropy_stats['bimodality_coefficient'],
         }
     
     except Exception as e:

@@ -283,6 +283,37 @@ def calculate_entropy_quantile_features(entropies):
         'entropy_cv': cv
     }
 
+def calculate_bimodality_coefficient(values):
+    """
+    Calculate bimodality coefficient for a distribution.
+    
+    BC = (skewness² + 1) / (kurtosis + 3)
+    
+    BC > 0.555 suggests bimodality
+    BC < 0.555 suggests unimodality
+    
+    Args:
+        values: numpy array of values
+        
+    Returns:
+        float: Bimodality coefficient, or 0.0 if calculation fails
+    """
+    from scipy import stats
+    
+    if len(values) < 10:
+        return 0.0
+    
+    try:
+        skewness = stats.skew(values)
+        kurtosis = stats.kurtosis(values)  # Excess kurtosis (already -3)
+        
+        # Formula uses Pearson's kurtosis (excess + 3)
+        bc = (skewness**2 + 1) / (kurtosis + 3)
+        
+        return float(bc)
+    
+    except Exception:
+        return 0.0
 
 def calculate_msa_entropy_stats(sequences):
     """
@@ -325,16 +356,44 @@ def calculate_msa_entropy_stats(sequences):
     # Convert to numpy array for easy statistics
     entropies = np.array(entropies)
     
+    entropy_skewness, entropy_kurtosis = calculate_distribution_shape_features(entropies)
+    # Calculate bimodality coefficient
+    bimodality_coef = (entropy_skewness**2 + 1) / (entropy_kurtosis + 3)
     # Calculate statistics
     stats = {
         'avg_entropy': float(np.mean(entropies)),
         'entropy_variance': float(np.var(entropies, ddof=1)),  # Sample variance
         'max_entropy': float(np.max(entropies)),
-        'lag1_autocorr': calculate_lag1_autocorr(entropies)
+        'lag1_autocorr': calculate_lag1_autocorr(entropies),
+        'entropy_skewness': entropy_skewness,
+        'entropy_kurtosis': entropy_kurtosis,
+        'bimodality_coefficient': bimodality_coef
+        
     }
     
     return stats
 
+def calculate_alignment_features(sequences):
+    """
+    Calculate basic alignment properties.
+    
+    Returns:
+        dict with n_sequences, fraction_variable_sites
+    """
+    n_sequences = len(sequences)
+    seq_length = len(sequences[0]) if sequences else 0
+    
+    # Count variable sites (entropy > 0)
+    n_variable = 0
+    for col_idx in range(seq_length):
+        column = [seq[col_idx] for seq in sequences]
+        if calculate_column_entropy(column) > 0:
+            n_variable += 1
+    
+    return {
+        'n_sequences': n_sequences,
+        'fraction_variable_sites': n_variable / seq_length if seq_length > 0 else 0.0
+    }
 
 def calculate_msa_parsimony_stats(sequences, tree_file):
     """
@@ -457,6 +516,21 @@ def calculate_gamma_shape_features(sequences, tree_file):
         # 'gamma_shape_parsimony': gamma_shape_parsimony
     }
 
+
+def calculate_distribution_shape_features(values):
+    """
+    Calculate shape statistics that relate to gamma shape parameter.
+    
+    Low alpha → high skewness (long right tail)
+    High alpha → low skewness (more uniform)
+    """
+    from scipy import stats
+    
+    if len(values) < 10:
+        return {'skewness': 0.0, 'kurtosis': 0.0}
+    
+    return float(stats.skew(values)), float(stats.kurtosis(values))
+    
 
 def read_phylip_sequences(phylip_file):
     """
