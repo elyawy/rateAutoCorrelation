@@ -13,11 +13,12 @@ SIMULATED_DATA_DIR = pathlib.Path("..") / "simulated_data"
 # INFERENCE PIPELINE DIRECTORIES
 # ==========================================
 RESULTS_DIR = pathlib.Path("results")
+TREES_DIR = pathlib.Path("..") / "trees"
 
 # ==========================================
 # MACHINE LEARNING PARAMETERS
 # ==========================================
-N_TRAIN_TREES = 71  # Number of trees to use for training (rest used for testing)
+N_TRAIN_TREES = 100  # Number of trees to use for training (rest used for testing)
 
 # ==========================================
 # AMINO ACID ALPHABET

@@ -1,9 +1,11 @@
 """
-Step 2: Train ML models to predict alpha and rho from entropy features.
+Step 2: Train ML models to predict alpha and rho from features.
 
-Trains two separate RandomForestRegressor models:
+Trains two separate RandomForestRegressor models with hyperparameter tuning:
   - One for predicting alpha
   - One for predicting rho
+
+Uses GridSearchCV with cross-validation on training trees to find best parameters.
 
 Input:
   - results/features.csv (statistics)
@@ -13,6 +15,7 @@ Output:
   - results/alpha_model.pkl (trained model)
   - results/rho_model.pkl (trained model)
   - results/ml_evaluation.csv (performance metrics)
+  - results/best_params.txt (best hyperparameters found)
 """
 
 import pathlib
@@ -20,6 +23,7 @@ import pandas as pd
 import numpy as np
 import pickle
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import GridSearchCV, GroupKFold
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import sys
 
@@ -66,26 +70,62 @@ def load_ground_truth(simulated_data_dir):
     return pd.concat(all_truth, ignore_index=True)
 
 
-def train_and_evaluate_model(X_train, X_test, y_train, y_test, param_name, random_state=42):
+def train_and_evaluate_model_with_tuning(X_train, X_test, y_train, y_test, 
+                                         train_groups, param_name, random_state=42):
     """
-    Train a RandomForestRegressor and return model + metrics.
+    Train a RandomForestRegressor with hyperparameter tuning using GridSearchCV.
+    Uses GroupKFold to ensure entire trees stay together during CV.
+    
+    Returns:
+        - Best model
+        - Metrics dict
+        - Best parameters
     """
-    model = RandomForestRegressor(
-        n_estimators=200,
-        max_depth=10,
-        min_samples_split=20,
-        min_samples_leaf=5,
-        max_features='sqrt',
-        random_state=42,
-        n_jobs=-1
+    
+    # Define parameter grid to search
+    param_grid = {
+        'n_estimators': [200, 500],
+        'max_depth': [10, 20, 30],
+        'min_samples_split': [10, 20],
+        'min_samples_leaf': [5, 10],
+        'max_features': ['sqrt']
+    }
+    
+    # Base model
+    base_model = RandomForestRegressor(random_state=random_state, n_jobs=-1)
+    
+    # GroupKFold to keep trees together (5-fold CV)
+    gkf = GroupKFold(n_splits=5)
+    
+    print(f"  Running GridSearchCV with {len(param_grid['n_estimators']) * len(param_grid['max_depth']) * len(param_grid['min_samples_split']) * len(param_grid['min_samples_leaf']) * len(param_grid['max_features'])} parameter combinations...")
+    print(f"  Using 5-fold cross-validation on training trees...")
+    
+    # Grid search
+    grid_search = GridSearchCV(
+        base_model,
+        param_grid,
+        cv=gkf,
+        scoring='neg_mean_squared_error',
+        n_jobs=-1,
+        verbose=2
     )
     
-    # Train
-    model.fit(X_train, y_train)
+    # Fit on training data with group information
+    grid_search.fit(X_train, y_train, groups=train_groups)
     
-    # Predict
-    y_train_pred = model.predict(X_train)
-    y_test_pred = model.predict(X_test)
+    # Best model
+    best_model = grid_search.best_estimator_
+    best_params = grid_search.best_params_
+    best_cv_score = -grid_search.best_score_  # Convert back to MSE
+    
+    print(f"\n  Best parameters found:")
+    for param, value in best_params.items():
+        print(f"    {param}: {value}")
+    print(f"  Best CV MSE: {best_cv_score:.6f} (RMSE: {np.sqrt(best_cv_score):.6f})")
+    
+    # Predict on train and test
+    y_train_pred = best_model.predict(X_train)
+    y_test_pred = best_model.predict(X_test)
     
     # Calculate metrics
     metrics = {
@@ -97,31 +137,33 @@ def train_and_evaluate_model(X_train, X_test, y_train, y_test, param_name, rando
         'train_mae': mean_absolute_error(y_train, y_train_pred),
         'test_mae': mean_absolute_error(y_test, y_test_pred),
         'train_r2': r2_score(y_train, y_train_pred),
-        'test_r2': r2_score(y_test, y_test_pred)
+        'test_r2': r2_score(y_test, y_test_pred),
+        'cv_mse': best_cv_score,
+        'cv_rmse': np.sqrt(best_cv_score)
     }
     
-    return model, metrics
+    return best_model, metrics, best_params
 
 
 def main():
-    """Main function to train ML models."""
+    """Main function to train ML models with hyperparameter tuning."""
     
     # Paths
     results_dir = pathlib.Path('results')
-    entropy_file = results_dir / 'features.csv'
+    features_file = results_dir / 'features.csv'
     simulated_data_dir = parent_config.SIMULATED_DATA_DIR
     
-    # Check if entropy file exists
-    if not entropy_file.exists():
-        print(f"Error: {entropy_file} does not exist. Run step 1 first.")
+    # Check if features file exists
+    if not features_file.exists():
+        print(f"Error: {features_file} does not exist. Run step 1 first.")
         return
     
     print("Loading data...")
     print("=" * 50)
     
-    # Load entropy features
-    entropy_df = pd.read_csv(entropy_file)
-    print(f"Loaded {len(entropy_df)} entropy feature rows")
+    # Load features
+    features_df = pd.read_csv(features_file)
+    print(f"Loaded {len(features_df)} feature rows")
     
     # Load ground truth
     ground_truth = load_ground_truth(simulated_data_dir)
@@ -129,7 +171,7 @@ def main():
     
     # Merge on tree and simulation
     merged = pd.merge(
-        entropy_df,
+        features_df,
         ground_truth,
         on=['tree', 'simulation'],
         how='inner'
@@ -171,15 +213,14 @@ def main():
     print(f"  Test samples: {len(test_data) if test_data is not None else 0}")
     
     # Prepare features and targets
-    feature_columns = [
-        'avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr',
-        'avg_parsimony_score', 'var_parsimony_score', 
-        'lag1_parsimony_autocorr', 'parsimony_entropy_correlation'
-    ]
+    feature_columns = ['avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr',
+                       'avg_parsimony_score', 'var_parsimony_score', 
+                       'lag1_parsimony_autocorr', 'parsimony_entropy_correlation']
     
     X_train = train_data[feature_columns].values
     y_alpha_train = train_data['true_alpha'].values
     y_rho_train = train_data['true_rho'].values
+    train_groups = train_data['tree'].values  # For GroupKFold
     
     if test_data is not None and len(test_data) > 0:
         X_test = test_data[feature_columns].values
@@ -195,44 +236,48 @@ def main():
     print(f"Feature columns: {feature_columns}")
     
     print("\n" + "=" * 50)
-    print("Training Alpha Model...")
+    print("Training Alpha Model with Hyperparameter Tuning...")
     print("=" * 50)
     
-    alpha_model, alpha_metrics = train_and_evaluate_model(
+    alpha_model, alpha_metrics, alpha_best_params = train_and_evaluate_model_with_tuning(
         X_train, X_test, y_alpha_train, y_alpha_test, 
-        'alpha', random_state=42
+        train_groups, 'alpha', random_state=42
     )
     
     print(f"\nAlpha Model Performance:")
+    print(f"  CV RMSE (5-fold on train trees): {alpha_metrics['cv_rmse']:.4f}")
+    print(f"  Train RMSE: {alpha_metrics['train_rmse']:.4f}")
     print(f"  Train R²: {alpha_metrics['train_r2']:.4f}")
     if test_data is not None and len(test_data) > 0:
-        print(f"  Test R² (held-out trees):  {alpha_metrics['test_r2']:.4f}")
-        print(f"  Test RMSE: {alpha_metrics['test_rmse']:.4f}")
-        print(f"  Test MAE:  {alpha_metrics['test_mae']:.4f}")
+        print(f"  Test RMSE (held-out trees): {alpha_metrics['test_rmse']:.4f}")
+        print(f"  Test R²: {alpha_metrics['test_r2']:.4f}")
+        print(f"  Test MAE: {alpha_metrics['test_mae']:.4f}")
     
     print(f"\nFeature Importance (Alpha):")
     for feat, imp in zip(feature_columns, alpha_model.feature_importances_):
-        print(f"  {feat:30s}: {imp:.4f}")
+        print(f"  {feat:35s}: {imp:.4f}")
     
     print("\n" + "=" * 50)
-    print("Training Rho Model...")
+    print("Training Rho Model with Hyperparameter Tuning...")
     print("=" * 50)
     
-    rho_model, rho_metrics = train_and_evaluate_model(
+    rho_model, rho_metrics, rho_best_params = train_and_evaluate_model_with_tuning(
         X_train, X_test, y_rho_train, y_rho_test, 
-        'rho', random_state=42
+        train_groups, 'rho', random_state=42
     )
     
     print(f"\nRho Model Performance:")
+    print(f"  CV RMSE (5-fold on train trees): {rho_metrics['cv_rmse']:.4f}")
+    print(f"  Train RMSE: {rho_metrics['train_rmse']:.4f}")
     print(f"  Train R²: {rho_metrics['train_r2']:.4f}")
     if test_data is not None and len(test_data) > 0:
-        print(f"  Test R² (held-out trees):  {rho_metrics['test_r2']:.4f}")
-        print(f"  Test RMSE: {rho_metrics['test_rmse']:.4f}")
-        print(f"  Test MAE:  {rho_metrics['test_mae']:.4f}")
+        print(f"  Test RMSE (held-out trees): {rho_metrics['test_rmse']:.4f}")
+        print(f"  Test R²: {rho_metrics['test_r2']:.4f}")
+        print(f"  Test MAE: {rho_metrics['test_mae']:.4f}")
     
     print(f"\nFeature Importance (Rho):")
     for feat, imp in zip(feature_columns, rho_model.feature_importances_):
-        print(f"  {feat:30s}: {imp:.4f}")
+        print(f"  {feat:35s}: {imp:.4f}")
     
     # Save models
     print("\n" + "=" * 50)
@@ -254,6 +299,24 @@ def main():
     metrics_file = results_dir / 'ml_evaluation.csv'
     metrics_df.to_csv(metrics_file, index=False)
     print(f"  Evaluation metrics saved to: {metrics_file}")
+    
+    # Save best parameters
+    best_params_file = results_dir / 'best_params.txt'
+    with open(best_params_file, 'w') as f:
+        f.write("=" * 50 + "\n")
+        f.write("BEST HYPERPARAMETERS\n")
+        f.write("=" * 50 + "\n\n")
+        f.write("Alpha Model:\n")
+        for param, value in alpha_best_params.items():
+            f.write(f"  {param}: {value}\n")
+        f.write(f"\n  CV RMSE: {alpha_metrics['cv_rmse']:.6f}\n")
+        f.write(f"  Test RMSE: {alpha_metrics['test_rmse']:.6f}\n\n")
+        f.write("Rho Model:\n")
+        for param, value in rho_best_params.items():
+            f.write(f"  {param}: {value}\n")
+        f.write(f"\n  CV RMSE: {rho_metrics['cv_rmse']:.6f}\n")
+        f.write(f"  Test RMSE: {rho_metrics['test_rmse']:.6f}\n")
+    print(f"  Best parameters saved to: {best_params_file}")
     
     # Save tree split information
     tree_split_file = results_dir / 'tree_split.csv'

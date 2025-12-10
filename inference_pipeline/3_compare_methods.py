@@ -83,7 +83,7 @@ def main():
     # Paths
     results_dir = pathlib.Path('results')
     parent_results_dir = pathlib.Path('..') / 'results'
-    entropy_file = results_dir / 'entropy_features.csv'
+    features_file = results_dir / 'features.csv'
     codeml_file = parent_results_dir / 'inferred_parameters.csv'
     tree_split_file = results_dir / 'tree_split.csv'
     alpha_model_file = results_dir / 'alpha_model.pkl'
@@ -92,7 +92,7 @@ def main():
     
     # Check required files
     required_files = {
-        'Entropy features': entropy_file,
+        'Features': features_file,
         'Codeml results': codeml_file,
         'Tree split': tree_split_file,
         'Alpha model': alpha_model_file,
@@ -103,7 +103,7 @@ def main():
     if missing:
         print(f"Error: Missing required files: {', '.join(missing)}")
         print("\nMake sure you've run:")
-        print("  1. Step 1: Extract entropy features")
+        print("  1. Step 1: Extract features")
         print("  2. Step 2: Train ML models")
         print("  3. Main pipeline step 2 & 3: Run codeml and extract parameters")
         return
@@ -115,9 +115,9 @@ def main():
     ground_truth = load_ground_truth(simulated_data_dir)
     print(f"Ground truth: {len(ground_truth)} samples")
     
-    # Load entropy features
-    entropy_df = pd.read_csv(entropy_file)
-    print(f"Entropy features: {len(entropy_df)} samples")
+    # Load features
+    features_df = pd.read_csv(features_file)
+    print(f"Features: {len(features_df)} samples")
     
     # Load codeml predictions
     codeml_df = pd.read_csv(codeml_file)
@@ -136,17 +136,21 @@ def main():
         rho_model = pickle.load(f)
     print("ML models loaded")
     
-    # Merge entropy features with ground truth
+    # Merge features with ground truth
     merged = pd.merge(
-        entropy_df,
+        features_df,
         ground_truth,
         on=['tree', 'simulation'],
         how='inner'
     )
-    print(f"\nMerged entropy + ground truth: {len(merged)} samples")
+    print(f"\nMerged features + ground truth: {len(merged)} samples")
     
     # Generate ML predictions for all samples
-    feature_columns = ['avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr']
+    feature_columns = [
+        'avg_entropy', 'entropy_variance', 'max_entropy', 'lag1_autocorr',
+        'avg_parsimony_score', 'var_parsimony_score', 
+        'lag1_parsimony_autocorr', 'parsimony_entropy_correlation'
+    ]
     X = merged[feature_columns].values
     
     merged['ml_alpha'] = alpha_model.predict(X)
