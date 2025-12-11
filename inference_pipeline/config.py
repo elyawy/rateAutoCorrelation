@@ -18,7 +18,9 @@ TREES_DIR = pathlib.Path("..") / "trees"
 # ==========================================
 # MACHINE LEARNING PARAMETERS
 # ==========================================
-N_TRAIN_TREES = 100  # Number of trees to use for training (rest used for testing)
+N_TRAIN_TREES = 50  # Which trees to use for training (first N trees)
+N_SIMS_PER_TREE = 50  # How many simulations per tree to use for training (50, 100, or 200)
+USE_COMPLETE_TEST_TREES_ONLY = True  # Filter test set to only trees with complete codeml results
 
 # ==========================================
 # FEATURE CONFIGURATION

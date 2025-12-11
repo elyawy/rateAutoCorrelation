@@ -20,7 +20,7 @@ RESULTS_DIR = "results"
 # ==========================================
 # SIMULATION PARAMETERS
 # ==========================================
-NUM_SIMULATIONS_PER_TREE = 50  # How many MSAs per tree
+NUM_SIMULATIONS_PER_TREE = 200  # How many MSAs per tree
 SEQ_LENGTH = 5000              # Length of each sequence
 
 # Parameter ranges for random sampling

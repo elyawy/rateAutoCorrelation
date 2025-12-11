@@ -30,9 +30,6 @@ import sys
 # Import local config (inference_pipeline/config.py)
 import config as local_config
 
-# Import parent config for SIMULATED_DATA_DIR
-sys.path.append('..')
-import config as parent_config
 
 
 def load_ground_truth(simulated_data_dir):
@@ -151,7 +148,7 @@ def main():
     # Paths
     results_dir = pathlib.Path('results')
     features_file = results_dir / 'features.csv'
-    simulated_data_dir = parent_config.SIMULATED_DATA_DIR
+    simulated_data_dir = local_config.SIMULATED_DATA_DIR
     
     # Check if features file exists
     if not features_file.exists():
