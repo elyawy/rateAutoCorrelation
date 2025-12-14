@@ -11,6 +11,9 @@ import pathlib
 import random
 import numpy as np
 import hashlib
+import argparse
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from io import StringIO
 from Bio import SeqIO
 
@@ -96,6 +99,12 @@ def simulate_for_tree(tree_path, output_dir, tree_seed):
 
 def main():
     """Main function to process all trees."""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Generate simulated MSAs')
+    parser.add_argument('--cores', type=int, default=os.cpu_count(),
+                        help=f'Number of cores to use (default: {os.cpu_count()})')
+    args = parser.parse_args()
+    
     trees_dir = pathlib.Path(config.TREES_DIR)
     output_dir = pathlib.Path(config.SIMULATED_DATA_DIR)
     
@@ -108,17 +117,36 @@ def main():
     
     print(f"Found {len(tree_files)} tree(s)")
     print(f"Generating {config.NUM_SIMULATIONS_PER_TREE} simulations per tree")
+    print(f"Using {args.cores} CPU cores for parallel processing")
     print(f"Master seed: {config.MASTER_SEED}")
     print("=" * 50)
     
-    # Process each tree
-    for tree_path in tree_files:
-        tree_seed = get_tree_seed(tree_path.name, config.MASTER_SEED)
-        simulate_for_tree(tree_path, output_dir, tree_seed)
+    # Process trees in parallel
+    with ProcessPoolExecutor(max_workers=args.cores) as executor:
+        # Submit all tree processing tasks
+        future_to_tree = {
+            executor.submit(
+                simulate_for_tree,
+                tree_path,
+                output_dir,
+                get_tree_seed(tree_path.name, config.MASTER_SEED)
+            ): tree_path for tree_path in tree_files
+        }
+        
+        # Collect results as they complete
+        completed = 0
+        for future in as_completed(future_to_tree):
+            tree_path = future_to_tree[future]
+            try:
+                future.result()  # This will raise any exceptions that occurred
+                completed += 1
+                print(f"\nCompleted {completed}/{len(tree_files)} trees")
+            except Exception as e:
+                print(f"\nError processing {tree_path.name}: {e}")
     
     print("\n" + "=" * 50)
     print("All simulations complete!")
     print(f"Output directory: {output_dir}/")
-
+    
 if __name__ == "__main__":
     main()

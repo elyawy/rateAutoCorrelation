@@ -329,7 +329,7 @@ def main():
     print(f"\nUsing {len(feature_columns)} features")
     
     # Train models for different sizes
-    training_sizes = [50, 100, 200]
+    training_sizes = [400]
     all_metrics = []
     all_best_params = {}
     
