@@ -33,6 +33,36 @@ import sys
 # Import local config (inference_pipeline/config.py)
 import config as local_config
 
+class CorrectedNN(nn.Module):
+    def __init__(self, input_size):
+        super(CorrectedNN, self).__init__()
+        # Removed Dropout layers
+        self.fc1 = nn.Linear(input_size, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 32)
+        
+        # CHANGED: Output 2 values, not 1
+        self.fc4 = nn.Linear(32, 2) 
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x)) # Removed Dropout
+        x = F.relu(self.fc3(x)) # Removed Dropout
+        
+        raw_output = self.fc4(x)
+        
+        # Split and Scale (The "Bound Enforcement" Logic)
+        raw_alpha = raw_output[:, 0].unsqueeze(1)
+        raw_rho   = raw_output[:, 1].unsqueeze(1)
+        
+        # Alpha: 0.1 to 2.0
+        alpha = 0.1 + 1.9 * torch.sigmoid(raw_alpha)
+        
+        # Rho: 0.05 to 0.95
+        rho = 0.05 + 0.9 * torch.sigmoid(raw_rho)
+        
+        return torch.cat((alpha, rho), dim=1)
+
 
 class SimpleNN(nn.Module):
     """
@@ -245,7 +275,7 @@ def main():
     
     # Paths
     results_dir = pathlib.Path('results')
-    features_file = results_dir / 'features.csv'
+    features_file = results_dir / 'features_test.csv'
     simulated_data_dir = local_config.SIMULATED_DATA_DIR
     
     # Check if features file exists
@@ -340,9 +370,9 @@ def main():
         y_rho_test = y_rho_train[:1]
     
     # Standardize features
-    # scaler = StandardScaler()
-    # X_train = scaler.fit_transform(X_train)
-    # X_test = scaler.transform(X_test)
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
     
     print(f"\nFeatures shape: Train {X_train.shape}, Test {X_test.shape if test_data is not None else 'N/A'}")
     print(f"Feature columns ({len(feature_columns)}):")

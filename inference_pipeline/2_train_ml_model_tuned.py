@@ -147,7 +147,7 @@ def main():
     
     # Paths
     results_dir = pathlib.Path('results')
-    features_file = results_dir / 'features.csv'
+    features_file = results_dir / 'features_test.csv'
     simulated_data_dir = local_config.SIMULATED_DATA_DIR
     
     # Check if features file exists

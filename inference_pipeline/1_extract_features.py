@@ -133,7 +133,7 @@ def main():
     
     simulated_data_dir = config.SIMULATED_DATA_DIR
     trees_dir = config.TREES_DIR
-    results_dir = config.RESULTS_DIR
+    results_dir = config.FEATURES_DIR
     
     if not simulated_data_dir.exists():
         print(f"Error: {simulated_data_dir}/ does not exist.")
