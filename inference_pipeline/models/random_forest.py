@@ -30,9 +30,9 @@ class RandomForestModel():
         self.best_model = None
 
 
-    def train(self, X, y):
+    def train(self, X, y, groups):
         # Implement training logic here
-       self.grid_search.fit(X, y)
+       self.grid_search.fit(X, y, groups=groups)
        self.best_model = self.grid_search.best_estimator_
 
     def predict(self, X):
