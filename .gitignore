@@ -6,3 +6,4 @@ inference_pipeline/results
 inference_pipeline/features
 results
 .venv
+training_data

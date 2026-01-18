@@ -2,23 +2,16 @@
 Configuration for the entropy-based inference pipeline.
 """
 import pathlib
-import sys
+
 
 MASTER_SEED = 42
 
 # ==========================================
-# PARENT DIRECTORIES (from main pipeline)
-# ==========================================
-# Point directly to the simulated data directory
-SIMULATED_DATA_DIR = pathlib.Path("..") / "simulated_data"
-
-# ==========================================
 # INFERENCE PIPELINE DIRECTORIES
 # ==========================================
+SIMULATED_DATA_DIR = pathlib.Path("training_data")  # Self-generated training data
 RESULTS_DIR = pathlib.Path("results")
 FEATURES_DIR = pathlib.Path("features")
-
-TREES_DIR = pathlib.Path("..") / "trees"
 
 # ==========================================
 # MACHINE LEARNING PARAMETERS
