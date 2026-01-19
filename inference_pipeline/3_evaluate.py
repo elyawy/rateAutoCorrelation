@@ -26,12 +26,13 @@ from features_calculator import calculate_msa_entropy_stats, read_phylip_sequenc
 
 
 # Validation configuration
-VALIDATION_SEED = 12345
+VALIDATION_SEED = 42
 N_TREES = 50
 N_MSAS_PER_TREE = 10
 MIN_TAXA = 5
 MAX_TAXA = 100
-SEQ_LENGTH = 5000
+MIN_SEQ_LENGTH = 500
+MAX_SEQ_LENGTH = 5000
 
 
 def generate_random_tree(n_taxa, seed):
@@ -77,13 +78,14 @@ def simulate_msa_for_tree(tree, sim_seed):
     
     true_alpha = round(random.uniform(*config.ALPHA_RANGE), 3)
     true_rho = round(random.uniform(*config.RHO_RANGE), 3)
-    
+    seequence_length = random.randint(MIN_SEQ_LENGTH, MAX_SEQ_LENGTH)
+
     # Get Newick string directly from tree
     newick_string = tree.write(format=1)
     
     # Setup simulation with Newick string
     simulation_protocol = protocol.SimProtocol(newick_string)
-    simulation_protocol.set_sequence_size(SEQ_LENGTH)
+    simulation_protocol.set_sequence_size(seequence_length)
     simulation_protocol.set_insertion_rates(0.0)
     simulation_protocol.set_deletion_rates(0.0)
     simulation_protocol.set_seed(sim_seed)
@@ -279,6 +281,11 @@ def main():
             ax.set_title(f'{model_type.replace("_", " ").title()} - {param.upper()}\n'
                         f'MSE: {results[model_type][f"mse_{param}"]:.6f}', 
                         fontsize=14)
+            # R^2 calculation
+            correlation_matrix = np.corrcoef(df[true_col], df[pred_col])
+            r_squared = correlation_matrix[0, 1] ** 2
+            ax.text(0.05, 0.95, f'$R^2$ = {r_squared:.4f}', 
+                    transform=ax.transAxes, fontsize=12, verticalalignment='top')
             ax.legend()
             ax.grid(True, alpha=0.3)
             

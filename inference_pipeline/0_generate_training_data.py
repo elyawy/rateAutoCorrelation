@@ -27,7 +27,7 @@ N_TRAINING_TREES = 100
 N_TRAINING_SIMS_PER_TREE = 250
 MIN_TAXA = 5
 MAX_TAXA = 100
-MIN_Seq_LENGTH = 500
+MIN_SEQ_LENGTH = 500
 MAX_SEQ_LENGTH = 5000
 
 
@@ -74,7 +74,7 @@ def simulate_msa_for_tree(tree, sim_seed):
     
     true_alpha = round(random.uniform(*config.ALPHA_RANGE), 3)
     true_rho = round(random.uniform(*config.RHO_RANGE), 3)
-    seequence_length = random.randint(MIN_Seq_LENGTH, MAX_SEQ_LENGTH)
+    seequence_length = random.randint(MIN_SEQ_LENGTH, MAX_SEQ_LENGTH)
     
     # Get Newick string directly from tree
     newick_string = tree.write(format=1)

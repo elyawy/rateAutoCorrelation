@@ -23,8 +23,8 @@ def load_ground_truth(simulated_data_path: pathlib.Path) -> pd.DataFrame:
         
         df = pd.read_csv(truth_file)
         
-        # Extract simulation name from filename (remove .phy extension)
-        df['simulation'] = df['filename'].str.replace('.phy', '', regex=False)
+        # Extract simulation name from filename (remove .fasta extension)
+        df['simulation'] = df['filename'].str.replace('.fasta', '', regex=False)
         df['tree'] = tree_name
         
         # Select relevant columns
