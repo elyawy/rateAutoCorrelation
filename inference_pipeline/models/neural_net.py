@@ -35,14 +35,8 @@ class ParameterPredictionNN(nn.Module):
         raw_alpha = raw_output[:, 0].unsqueeze(1)
         raw_rho = raw_output[:, 1].unsqueeze(1)
         
-        # Apply sigmoid and scale to desired ranges
-        # Alpha: 0.1 to 2.0
-        alpha = 0.1 + 1.9 * torch.sigmoid(raw_alpha)
-        
-        # Rho: 0.01 to 0.95
-        rho = 0.01 + 0.94 * torch.sigmoid(raw_rho)
-        
-        return torch.cat((alpha, rho), dim=1)
+        # Apply transformations to enforce bounds        
+        return torch.cat((raw_alpha, raw_rho), dim=1)
 
 
 class NeuralNetworkModel:

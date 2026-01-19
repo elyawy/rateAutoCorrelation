@@ -24,10 +24,11 @@ import config
 # Training data generation configuration
 TRAINING_SEED = 12345
 N_TRAINING_TREES = 100
-N_TRAINING_SIMS_PER_TREE = 500
+N_TRAINING_SIMS_PER_TREE = 250
 MIN_TAXA = 5
 MAX_TAXA = 100
-SEQ_LENGTH = 5000
+MIN_Seq_LENGTH = 500
+MAX_SEQ_LENGTH = 5000
 
 
 def generate_random_tree(n_taxa, seed):
@@ -73,13 +74,14 @@ def simulate_msa_for_tree(tree, sim_seed):
     
     true_alpha = round(random.uniform(*config.ALPHA_RANGE), 3)
     true_rho = round(random.uniform(*config.RHO_RANGE), 3)
+    seequence_length = random.randint(MIN_Seq_LENGTH, MAX_SEQ_LENGTH)
     
     # Get Newick string directly from tree
     newick_string = tree.write(format=1)
     
     # Setup simulation with Newick string
     simulation_protocol = protocol.SimProtocol(newick_string)
-    simulation_protocol.set_sequence_size(SEQ_LENGTH)
+    simulation_protocol.set_sequence_size(seequence_length)
     simulation_protocol.set_insertion_rates(0.0)
     simulation_protocol.set_deletion_rates(0.0)
     simulation_protocol.set_seed(sim_seed)

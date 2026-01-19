@@ -19,35 +19,31 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import config
 from features_calculator import (
     calculate_msa_entropy_stats,
-    read_phylip_sequences
+    read_fasta_sequences
 )
 
 
-def process_single_simulation(sim_file, tree_file):
+def process_single_simulation(sim_file):
     """
     Worker function to process a single simulation file.
     Must be at module level for multiprocessing pickling.
     
     Args:
-        sim_file: Path to .phy simulation file
-        tree_file: Path to .newick tree file
-        
+        sim_file: Path to .fasta simulation file        
     Returns:
         dict: Feature dictionary or None if error
     """
-    tree_name = sim_file.parent.name
     sim_name = sim_file.stem
     
     try:
         # Read sequences
-        sequences = read_phylip_sequences(sim_file)
+        sequences = read_fasta_sequences(sim_file)
         
         # Calculate entropy statistics
         entropy_stats = calculate_msa_entropy_stats(sequences)
-                
         # Combine all features
         return {
-            'tree': tree_name,
+            'tree': sim_file.parent.name,
             'simulation': sim_name,
             # Entropy features
             'avg_entropy': entropy_stats['avg_entropy'],
@@ -57,6 +53,11 @@ def process_single_simulation(sim_file, tree_file):
             'entropy_skewness': entropy_stats['entropy_skewness'],
             'entropy_kurtosis': entropy_stats['entropy_kurtosis'],
             'bimodality_coefficient': entropy_stats['bimodality_coefficient'],
+            'gamma_shape_entropy': entropy_stats['gamma_shape_entropy'],
+            # Histogram bins
+            **{f'entropy_bin_{i}': entropy_stats[f'entropy_bin_{i}'] for i in range(10)},
+            # Multi-lag autocorrelations
+            **{f'lag{lag}_autocorr': entropy_stats[f'lag{lag}_autocorr'] for lag in range(2, 11)},
         }
     
     except Exception as e:
@@ -64,7 +65,7 @@ def process_single_simulation(sim_file, tree_file):
         return None
 
 
-def process_tree(tree_dir, trees_dir, num_workers=1):
+def process_simulations_folder(simulations_folder, num_workers=1):
     """
     Process all simulations for a single tree using multiprocessing.
     
@@ -74,23 +75,17 @@ def process_tree(tree_dir, trees_dir, num_workers=1):
         num_workers: Number of parallel workers
         
     Returns:
-        list: List of dicts with tree, simulation, and all features
+        list: List of dicts with simulations and all features
     """
-    tree_name = tree_dir.name
     results = []
     
-    # Get tree file path
-    tree_file = trees_dir / f"{tree_name}.newick"
     
-    if not tree_file.exists():
-        print(f"  WARNING: Tree file not found: {tree_file}")
-        return results
     
     # Find all simulation files
-    sim_files = sorted(tree_dir.glob("sim_*.phy"))
+    sim_files = sorted(simulations_folder.glob("sim_*.fasta"))
     
     if not sim_files:
-        print(f"  WARNING: No simulation files found in {tree_dir}")
+        print(f"  WARNING: No simulation files found in {simulations_folder}")
         return results
     
     total = len(sim_files)
@@ -100,7 +95,7 @@ def process_tree(tree_dir, trees_dir, num_workers=1):
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         # Submit all tasks
         future_to_sim = {
-            executor.submit(process_single_simulation, sim_file, tree_file): sim_file
+            executor.submit(process_single_simulation, sim_file): sim_file
             for sim_file in sim_files
         }
         
@@ -132,7 +127,6 @@ def main():
     args = parser.parse_args()
     
     simulated_data_dir = config.SIMULATED_DATA_DIR
-    trees_dir = config.TREES_DIR
     results_dir = config.FEATURES_DIR
     
     if not simulated_data_dir.exists():
@@ -140,9 +134,6 @@ def main():
         print("Run the main pipeline's step 1 first to generate simulations.")
         return
     
-    if not trees_dir.exists():
-        print(f"Error: {trees_dir}/ does not exist.")
-        return
     
     print("Extracting features from simulated MSAs...")
     print(f"Feature set: {len(config.FEATURE_COLUMNS)} features")
@@ -150,26 +141,26 @@ def main():
     print("=" * 50)
     
     # Find all tree directories
-    tree_dirs = sorted([d for d in simulated_data_dir.iterdir() if d.is_dir()])
+    simulation_dirs = sorted([d for d in simulated_data_dir.iterdir() if d.is_dir()])
     
-    if not tree_dirs:
-        print(f"Error: No tree directories found in {simulated_data_dir}/")
+    if not simulation_dirs:
+        print(f"Error: No simulation directories found in {simulated_data_dir}/")
         return
     
-    print(f"Found {len(tree_dirs)} tree(s)")
+    print(f"Found {len(simulation_dirs)} tree(s)")
     print()
     
     # Process each tree
     all_results = []
     
-    for tree_dir in tree_dirs:
-        tree_name = tree_dir.name
-        print(f"Processing tree: {tree_name}")
+    for simulation_dir in simulation_dirs:
+        dir_name = simulation_dir.name
+        print(f"Processing simulations in: {dir_name}")
         
-        tree_results = process_tree(tree_dir, trees_dir, num_workers=args.cores)
-        all_results.extend(tree_results)
+        simulation_results = process_simulations_folder(simulation_dir, num_workers=args.cores)
+        all_results.extend(simulation_results)
         
-        print(f"  Extracted features from {len(tree_results)} simulations")
+        print(f"  Extracted features from {len(simulation_results)} simulations")
         print()
     
     if not all_results:
