@@ -59,5 +59,5 @@ FEATURE_COLUMNS = [
 AMINO_ACIDS = set('ACDEFGHIKLMNPQRSTVWY')
 
 # Parameter ranges for random sampling
-ALPHA_RANGE = (0.1, 2.0)       # Min and Max Alpha
+ALPHA_RANGE = (0.01, 5.0)       # Min and Max Alpha
 RHO_RANGE = (0.01, 0.95)       # Min and Max Rho

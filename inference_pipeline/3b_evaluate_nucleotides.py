@@ -1,8 +1,8 @@
 """
-Validation script for trained models using freshly generated trees.
+Validation script for testing model generalization to nucleotide data.
 
-Generates random trees, simulates MSAs, extracts features, and evaluates
-both Random Forest and Neural Network models.
+Tests the protein-trained models on nucleotide MSAs simulated under the JC model.
+This evaluates whether entropy-based features generalize across different alphabets.
 """
 
 import pathlib
@@ -22,17 +22,17 @@ except ImportError:
     exit()
 
 import config
-from features_calculator import calculate_msa_entropy_stats, read_phylip_sequences
+from features_calculator import calculate_msa_entropy_stats
 
 
 # Validation configuration
-VALIDATION_SEED = 42
+VALIDATION_SEED = 1121
 N_TREES = 50
 N_MSAS_PER_TREE = 10
 MIN_TAXA = 5
 MAX_TAXA = 100
-MIN_SEQ_LENGTH = 50
-MAX_SEQ_LENGTH = 500
+MIN_SEQ_LENGTH = 500
+MAX_SEQ_LENGTH = 5000
 
 
 def generate_random_tree(n_taxa, seed):
@@ -63,7 +63,7 @@ def generate_random_tree(n_taxa, seed):
 
 def simulate_msa_for_tree(tree, sim_seed):
     """
-    Simulate a single MSA for a given tree.
+    Simulate a single nucleotide MSA for a given tree using JC model.
     
     Args:
         tree: ete3.Tree object
@@ -90,12 +90,12 @@ def simulate_msa_for_tree(tree, sim_seed):
     simulation_protocol.set_deletion_rates(0.0)
     simulation_protocol.set_seed(sim_seed)
     
-    # Create simulator
-    simulator = sim.Simulator(simulation_protocol, simulation_type=sim.SIMULATION_TYPE.PROTEIN)
+    # Create simulator for NUCLEOTIDES
+    simulator = sim.Simulator(simulation_protocol, simulation_type=sim.SIMULATION_TYPE.DNA)
     
-    # Configure model
+    # Configure NUCJC model (Jukes-Cantor for nucleotides)
     simulator.set_replacement_model(
-        model=sim.MODEL_CODES.WAG,
+        model=sim.MODEL_CODES.NUCJC,
         gamma_parameters_alpha=true_alpha,
         gamma_parameters_categories=8,
         site_rate_correlation=true_rho
@@ -114,16 +114,16 @@ def simulate_msa_for_tree(tree, sim_seed):
 def main():
     """Main validation workflow."""
     print("=" * 60)
-    print("MODEL VALIDATION WITH RANDOM TREES")
+    print("MODEL VALIDATION WITH NUCLEOTIDE DATA (JC MODEL)")
     print("=" * 60)
     print(f"Validation seed: {VALIDATION_SEED}")
     print(f"Generating {N_TREES} trees ({MIN_TAXA}-{MAX_TAXA} taxa)")
-    print(f"Simulating {N_MSAS_PER_TREE} MSAs per tree")
+    print(f"Simulating {N_MSAS_PER_TREE} nucleotide MSAs per tree")
     print(f"Total MSAs: {N_TREES * N_MSAS_PER_TREE}")
     print()
     
     # Setup directories
-    validation_dir = pathlib.Path("results/validation")
+    validation_dir = pathlib.Path("results/validation_nucleotides")
     trees_dir = validation_dir / "validation_trees"
     data_dir = validation_dir / "validation_data"
     plots_dir = validation_dir / "plots"
@@ -136,7 +136,7 @@ def main():
     np.random.seed(VALIDATION_SEED)
     
     # Step 1: Generate trees and simulate MSAs
-    print("Step 1: Generating trees and simulating MSAs...")
+    print("Step 1: Generating trees and simulating nucleotide MSAs...")
     print("-" * 60)
     
     all_data = []
@@ -278,14 +278,9 @@ def main():
             # Labels and title
             ax.set_xlabel(f'True {param}', fontsize=12)
             ax.set_ylabel(f'Predicted {param}', fontsize=12)
-            ax.set_title(f'{model_type.replace("_", " ").title()} - {param.upper()}\n'
+            ax.set_title(f'{model_type.replace("_", " ").title()} - {param.upper()} (Nucleotide Data)\n'
                         f'MSE: {results[model_type][f"mse_{param}"]:.6f}', 
                         fontsize=14)
-            # R^2 calculation
-            correlation_matrix = np.corrcoef(df[true_col], df[pred_col])
-            r_squared = correlation_matrix[0, 1] ** 2
-            ax.text(0.05, 0.95, f'$R^2$ = {r_squared:.4f}', 
-                    transform=ax.transAxes, fontsize=12, verticalalignment='top')
             ax.legend()
             ax.grid(True, alpha=0.3)
             
@@ -301,7 +296,7 @@ def main():
     print("VALIDATION COMPLETE!")
     print("=" * 60)
     print(f"\nResults saved to: {validation_dir}/")
-    print("\nSummary:")
+    print("\nSummary (Nucleotide Data - JC Model):")
     for model_type, metrics in results.items():
         print(f"\n{model_type.replace('_', ' ').title()}:")
         print(f"  Alpha MSE: {metrics['mse_alpha']:.6f}")
