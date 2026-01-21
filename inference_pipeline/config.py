@@ -60,4 +60,4 @@ AMINO_ACIDS = set('ACDEFGHIKLMNPQRSTVWY')
 
 # Parameter ranges for random sampling
 ALPHA_RANGE = (0.01, 5.0)       # Min and Max Alpha
-RHO_RANGE = (0.01, 0.95)       # Min and Max Rho
+RHO_RANGE = (0.01, 0.99)       # Min and Max Rho
