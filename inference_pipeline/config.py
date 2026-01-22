@@ -19,7 +19,7 @@ FEATURES_DIR = pathlib.Path("features")
 TRAINING_METHOD = 'neural_net'  # or 'random_forest'
 # TRAINING_METHOD = 'random_forest'  # or 'neural_net'
 
-N_TRAIN_TREES = 80  # Which trees to use for training (first N trees)
+N_TRAIN_TREES = 150  # Which trees to use for training (first N trees)
 N_SIMS_PER_TREE = 250  # How many simulations per tree to use for training (50, 100, or 200)
 USE_COMPLETE_TEST_TREES_ONLY = True  # Filter test set to only trees with complete codeml results
 
