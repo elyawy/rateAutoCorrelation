@@ -17,6 +17,9 @@ from Bio import SeqIO
 
 try:
     from msasim import protocol, simulator as sim
+    from msasim import Msa
+    from msasim.constants import MODEL_CODES, SITE_RATE_MODELS
+    from msasim.distributions import ZipfDistribution
 except ImportError:
     print("Error: 'msasim' library not found.")
     exit()
@@ -31,7 +34,7 @@ N_TRAINING_SIMS_PER_TREE = 250
 MIN_TAXA = 5
 MAX_TAXA = 200
 MIN_SEQ_LENGTH = 50
-MAX_SEQ_LENGTH = 5000
+MAX_SEQ_LENGTH = 2000
 
 
 def generate_random_tree(n_taxa, seed):
@@ -59,50 +62,62 @@ def generate_random_tree(n_taxa, seed):
     
     return tree
 
-
-def simulate_msa_for_tree(tree, sim_seed):
+def setup_sim(tree, sim_seed):
     """
-    Simulate a single MSA for a given tree.
-    
+    Setup the simulator for a given tree and seed.
     Args:
         tree: ete3.Tree object
         sim_seed: Seed for this simulation
+
+    Returns:
+        msasim.Simulator object
+    """
+    # Get Newick string directly from tree
+    newick_string = tree.write(format=1)
+
+    # Setup simulation with Newick string
+    simulation_protocol = protocol.SimProtocol(newick_string)
+    simulation_protocol.set_insertion_rates(0.03)
+    simulation_protocol.set_deletion_rates(0.09)
+    simulation_protocol.set_insertion_length_distributions(ZipfDistribution(1.7, 50))
+    simulation_protocol.set_deletion_length_distributions(ZipfDistribution(1.7, 50))
+    simulation_protocol.set_site_rate_model(SITE_RATE_MODELS.INDEL_AWARE)
+    simulation_protocol.set_seed(sim_seed)
+
+    # Create simulator
+    simulator = sim.Simulator(simulation_protocol, simulation_type=sim.SIMULATION_TYPE.PROTEIN)
+
+    return simulator
+
+def simulate_msa_for_tree(simulator: sim.Simulator):
+    """
+    Simulate a single MSA from the given simulator.
+    
+    Args:
+        simulator: msasim.Simulator object
         
     Returns:
         tuple: (sequences_list, true_alpha, true_rho, msa_string)
     """
     # Sample random parameters
-    random.seed(sim_seed)
-    np.random.seed(sim_seed)
     
     true_alpha = round(random.uniform(*config.ALPHA_RANGE), 3)
     true_rho = round(random.uniform(*config.RHO_RANGE), 3)
     seequence_length = random.randint(MIN_SEQ_LENGTH, MAX_SEQ_LENGTH)
-    
-    # Get Newick string directly from tree
-    newick_string = tree.write(format=1)
-    
-    # Setup simulation with Newick string
-    simulation_protocol = protocol.SimProtocol(newick_string)
-    simulation_protocol.set_sequence_size(seequence_length)
-    simulation_protocol.set_insertion_rates(0.0)
-    simulation_protocol.set_deletion_rates(0.0)
-    simulation_protocol.set_seed(sim_seed)
-    
-    # Create simulator
-    simulator = sim.Simulator(simulation_protocol, simulation_type=sim.SIMULATION_TYPE.PROTEIN)
-    
-    # Configure model
+    print(f"Simulating MSA with alpha={true_alpha}, rho={true_rho}, seq_length={seequence_length}")
+    simulator.protocol.set_sequence_size(seequence_length)
+    # Configure substitution model
     simulator.set_replacement_model(
-        model=sim.MODEL_CODES.WAG,
+        model=MODEL_CODES.WAG,
         gamma_parameters_alpha=true_alpha,
         gamma_parameters_categories=8,
         site_rate_correlation=true_rho
     )
+
     
     # Run simulation
-    msa = simulator()
-    msa_str = msa.get_msa()
+    msa: Msa = simulator()
+    msa_str = "\n".join(msa.get_msa_row(i) for i in range(msa.get_num_sequences()))
     
     return msa_str, true_alpha, true_rho
 
@@ -136,12 +151,16 @@ def process_single_tree(tree_idx, training_data_dir):
     with open(ground_truth_file, "w") as log:
         log.write("filename,true_alpha,true_rho\n")
     
+    random.seed(tree_seed)
+    np.random.seed(tree_seed)
+
+    simulator = setup_sim(tree, sim_seed=tree_seed)
+    
     # Simulate MSAs for this tree
     for msa_idx in range(N_TRAINING_SIMS_PER_TREE):
-        sim_seed = tree_seed + msa_idx + 1
         
         # Generate simulation
-        msa_str, true_alpha, true_rho = simulate_msa_for_tree(tree, sim_seed)
+        msa_str, true_alpha, true_rho = simulate_msa_for_tree(simulator)
         
         # Save as FASTA
         filename = f"sim_{msa_idx + 1:03d}_a{true_alpha}_r{true_rho}.fasta"
@@ -185,7 +204,7 @@ def main():
     # Process trees in parallel
     print("Processing trees in parallel...")
     print("-" * 60)
-    
+    process_single_tree(1, training_data_dir)  # Run one tree sequentially for debugging
     with ProcessPoolExecutor(max_workers=args.cores) as executor:
         # Submit all tree processing tasks
         future_to_tree = {

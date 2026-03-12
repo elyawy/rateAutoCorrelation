@@ -26,7 +26,7 @@ USE_COMPLETE_TEST_TREES_ONLY = True  # Filter test set to only trees with comple
 # ==========================================
 # OPTUNA HYPERPARAMETER OPTIMIZATION
 # ==========================================
-N_OPTUNA_TRIALS = 50  # Number of trials for hyperparameter search
+N_OPTUNA_TRIALS = 5  # Number of trials for hyperparameter search
 
 # ==========================================
 # FEATURE CONFIGURATION

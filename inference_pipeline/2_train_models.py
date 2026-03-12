@@ -156,7 +156,12 @@ def main():
     print(f"\nRunning Optuna optimization ({config.N_OPTUNA_TRIALS} trials)...")
     print("-" * 60)
     
-    study = optuna.create_study(direction='minimize')
+    study = optuna.create_study(
+        study_name="nn_optimization",
+        storage="sqlite:///optuna_study.db",
+        load_if_exists=True,
+        direction="minimize"
+    )
     
     if config.TRAINING_METHOD == 'random_forest':
         study.optimize(
