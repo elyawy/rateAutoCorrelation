@@ -3,7 +3,7 @@ simulated_data
 codeml_runs
 trees_old
 inference_pipeline/results
-inference_pipeline/features
+inference_pipeline/features/features.csv
 results
 .venv
 training_data

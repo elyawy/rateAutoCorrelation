@@ -16,17 +16,18 @@ FEATURES_DIR = pathlib.Path("features")
 # ==========================================
 # MACHINE LEARNING PARAMETERS
 # ==========================================
-TRAINING_METHOD = 'neural_net'  # or 'random_forest'
-# TRAINING_METHOD = 'random_forest'  # or 'neural_net'
+TRAINING_METHOD = 'lightgbm'    # options: 'lightgbm', 'neural_net', 'random_forest'
+# TRAINING_METHOD = 'neural_net'
+# TRAINING_METHOD = 'random_forest'
 
-N_TRAIN_TREES = 150  # Which trees to use for training (first N trees)
+N_TRAIN_TREES = 200  # Which trees to use for training (first N trees)
 N_SIMS_PER_TREE = 250  # How many simulations per tree to use for training (50, 100, or 200)
 USE_COMPLETE_TEST_TREES_ONLY = True  # Filter test set to only trees with complete codeml results
 
 # ==========================================
 # OPTUNA HYPERPARAMETER OPTIMIZATION
 # ==========================================
-N_OPTUNA_TRIALS = 5  # Number of trials for hyperparameter search
+N_OPTUNA_TRIALS = 30  # Number of trials for hyperparameter search
 
 # ==========================================
 # FEATURE CONFIGURATION

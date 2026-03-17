@@ -5,6 +5,7 @@ Loads features, runs Optuna for hyperparameter tuning, trains final model.
 """
 
 import pathlib
+import numpy as np
 import pandas as pd
 import joblib
 import optuna
@@ -57,7 +58,7 @@ def objective_random_forest(trial, X, y, groups):
     from models.random_forest import RandomForestModel
     
     params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 300),
+        'n_estimators': trial.suggest_int('n_estimators', 50, 150),
         'max_depth': trial.suggest_int('max_depth', 5, 30),
         'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
         'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 10)
@@ -65,8 +66,6 @@ def objective_random_forest(trial, X, y, groups):
     
     model = RandomForestModel(random_state=config.MASTER_SEED)
     model.set_params(**params)
-    
-    # Train with GroupKFold - this calculates cv_score internally
     model.train(X, y, groups=groups)
     
     return model.cv_score
@@ -105,19 +104,44 @@ def objective_neural_net(trial, X, y):
     return mse
 
 
+def objective_lightgbm(trial, X, y, groups):
+    """
+    Optuna objective for LightGBM using GroupKFold.
+
+    Tunes the most impactful hyperparameters first:
+    num_leaves, learning_rate, n_estimators, min_child_samples,
+    subsample, colsample_bytree.
+
+    Returns the average cross-validation MSE (mean of alpha and rho MSE).
+    """
+    from models.lightgbm_model import LightGBMModel
+
+    params = {
+        'num_leaves':        trial.suggest_int('num_leaves', 20, 300),
+        'learning_rate':     trial.suggest_float('learning_rate', 1e-3, 0.3, log=True),
+        'n_estimators':      trial.suggest_int('n_estimators', 100, 500),
+        'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
+        'subsample':         trial.suggest_float('subsample', 0.5, 1.0),
+        'colsample_bytree':  trial.suggest_float('colsample_bytree', 0.5, 1.0),
+    }
+
+    model = LightGBMModel(random_state=config.MASTER_SEED)
+    model.set_params(**params)
+    model.train(X, y, groups=groups)
+
+    return model.cv_score
+
+
 def train_final_model(best_params, X, y, groups, input_size):
     """
     Train the final model with best hyperparameters on full training data.
     """
     if config.TRAINING_METHOD == 'random_forest':
         from models.random_forest import RandomForestModel
+        from sklearn.ensemble import RandomForestRegressor
         
         model = RandomForestModel(random_state=config.MASTER_SEED)
         model.set_params(**best_params)
-        
-        # Train on full data WITHOUT cross-validation for final model
-        # We just want a single model, not CV scores
-        from sklearn.ensemble import RandomForestRegressor
         model.model = RandomForestRegressor(
             random_state=config.MASTER_SEED, 
             n_jobs=-1, 
@@ -133,7 +157,14 @@ def train_final_model(best_params, X, y, groups, input_size):
             **best_params
         )
         model.train(X, y)
-    
+
+    elif config.TRAINING_METHOD == 'lightgbm':
+        from models.lightgbm_model import LightGBMModel
+
+        model = LightGBMModel(random_state=config.MASTER_SEED)
+        model.set_params(**best_params)
+        model.train(X, y)  # No groups = train on full data
+
     else:
         raise ValueError(f"Unknown TRAINING_METHOD: {config.TRAINING_METHOD}")
     
@@ -149,6 +180,8 @@ def main():
     # Load training data ONCE
     print("\nLoading training data...")
     X_train, y_train, train_groups = load_training_data()
+    X_train = np.asarray(X_train)  # add this line
+    y_train = np.asarray(y_train)
     print(f"Training data shape: X={X_train.shape}, y={y_train.shape}")
     print(f"Number of unique trees: {len(set(train_groups))}")
     
@@ -156,12 +189,7 @@ def main():
     print(f"\nRunning Optuna optimization ({config.N_OPTUNA_TRIALS} trials)...")
     print("-" * 60)
     
-    study = optuna.create_study(
-        study_name="nn_optimization",
-        storage="sqlite:///optuna_study.db",
-        load_if_exists=True,
-        direction="minimize"
-    )
+    study = optuna.create_study(direction='minimize')
     
     if config.TRAINING_METHOD == 'random_forest':
         study.optimize(
@@ -172,6 +200,12 @@ def main():
     elif config.TRAINING_METHOD == 'neural_net':
         study.optimize(
             lambda trial: objective_neural_net(trial, X_train, y_train),
+            n_trials=config.N_OPTUNA_TRIALS,
+            show_progress_bar=True
+        )
+    elif config.TRAINING_METHOD == 'lightgbm':
+        study.optimize(
+            lambda trial: objective_lightgbm(trial, X_train, y_train, train_groups),
             n_trials=config.N_OPTUNA_TRIALS,
             show_progress_bar=True
         )

@@ -30,7 +30,7 @@ class RandomForestModel:
         """
         if groups is not None:
             # Use GroupKFold for hyperparameter optimization
-            gkf = GroupKFold(n_splits=5)
+            gkf = GroupKFold(n_splits=2)
             cv_scores = []
             
             for train_idx, val_idx in gkf.split(X, y, groups):

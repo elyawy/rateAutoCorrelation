@@ -48,16 +48,14 @@ class NeuralNetworkModel:
         self.epochs = epochs
         self.batch_size = batch_size
         
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print("Training on device:", self.device)
-        self.model = ParameterPredictionNN(input_size).to(self.device)
+        self.model = ParameterPredictionNN(input_size)
         self.criterion = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
     
     def train(self, X, y):
         """Train the neural network."""
-        X_tensor = torch.FloatTensor(X).to(self.device)
-        y_tensor = torch.FloatTensor(y).to(self.device)
+        X_tensor = torch.FloatTensor(X)
+        y_tensor = torch.FloatTensor(y)
         
         dataset = torch.utils.data.TensorDataset(X_tensor, y_tensor)
         dataloader = torch.utils.data.DataLoader(
@@ -71,8 +69,6 @@ class NeuralNetworkModel:
             epoch_loss = 0.0
             
             for inputs, targets in dataloader:
-                inputs = inputs.to(self.device)
-                targets = targets.to(self.device)
                 self.optimizer.zero_grad()
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)
@@ -90,9 +86,9 @@ class NeuralNetworkModel:
     def predict(self, X):
         """Make predictions with the trained model."""
         self.model.eval()
-        X_tensor = torch.FloatTensor(X).to(self.device)
+        X_tensor = torch.FloatTensor(X)
         
         with torch.no_grad():
             outputs = self.model(X_tensor)
         
-        return outputs.cpu().numpy()
+        return outputs.numpy()
