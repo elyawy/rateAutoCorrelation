@@ -2,6 +2,7 @@
 Core evaluation logic: simulate MSAs, extract features, run trained models.
 """
 
+import math
 import random
 import numpy as np
 import pandas as pd
@@ -38,7 +39,10 @@ def run_evaluation(sim_params: SimulationParams, n_trees: int, n_msas_per_tree: 
     for tree_idx in range(n_trees):
         n_taxa = random.randint(sim_params.min_taxa, sim_params.max_taxa)
         tree_seed = seed + tree_idx * 1000
-        tree = generate_random_tree(n_taxa, tree_seed)
+
+        random_scale = 10 ** random.uniform(math.log10(config.SCALE_MIN), math.log10(config.SCALE_MAX))
+
+        tree = generate_random_tree(n_taxa, random_scale, tree_seed)
         tree_name = f"tree_{tree_idx:03d}_n{n_taxa}"
 
         random.seed(tree_seed)

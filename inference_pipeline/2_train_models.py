@@ -13,41 +13,42 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
 import config
-from utils.data_loader import load_ground_truth
-
 
 def load_training_data():
     """
-    Load training data for the model.
-    
+    Load training data for the model from the precomputed features file.
+
+    This function reads the feature dataset from ``config.FEATURES_DIR / 'features.csv'``,
+    selects the first ``config.N_TRAIN_TREES`` unique trees to define the training
+    subset, and constructs:
+
+    - a feature matrix using ``config.FEATURE_COLUMNS``,
+    - target values consisting of the columns ``'true_alpha'`` and ``'true_rho'``, and
+    - group labels based on the tree identifiers (for use with grouped CV strategies).
+
     Returns:
-        X_train: Feature matrix (numpy array)
-        y_train: Target values (numpy array) 
-        train_groups: Group labels for GroupKFold (numpy array)
+        tuple:
+            X_train (numpy.ndarray): Feature matrix for training samples.
+            y_train (numpy.ndarray): Target values for training samples with
+                columns ``true_alpha`` and ``true_rho``.
+            train_groups (numpy.ndarray): Group labels (tree IDs) for each
+                training sample.
     """
     features_file = (config.FEATURES_DIR / 'features.csv').resolve()
-    full_data_df = pd.read_csv(features_file)
-    feature_cols = config.FEATURE_COLUMNS
-    ground_truth_df = load_ground_truth(config.SIMULATED_DATA_DIR)
-
-    # Merge features with ground truth
-    merged_df = pd.merge(
-        full_data_df,
-        ground_truth_df,
-        on=['tree', 'simulation'],
-        how='inner'
-    )
+    merged_df = pd.read_csv(features_file)
+    print(merged_df[config.FEATURE_COLUMNS].isnull().sum())
+    print((merged_df[config.FEATURE_COLUMNS] == np.inf).sum())
+    print(merged_df[config.FEATURE_COLUMNS].describe())
+    merged_df = merged_df.dropna(subset=config.FEATURE_COLUMNS)
     
-    # Filter for training trees
     train_trees = sorted(merged_df['tree'].unique())[:config.N_TRAIN_TREES]
     train_df = merged_df[merged_df['tree'].isin(train_trees)]
 
-    X_train = train_df[feature_cols].values
+    X_train = train_df[config.FEATURE_COLUMNS].values
     y_train = train_df[['true_alpha', 'true_rho']].values
     train_groups = train_df['tree'].values
 
     return X_train, y_train, train_groups
-
 
 def objective_random_forest(trial, X, y, groups):
     """
@@ -69,7 +70,7 @@ def objective_random_forest(trial, X, y, groups):
     model.train(X, y, groups=groups)
     
     return model.cv_score
-
+    
 
 def objective_neural_net(trial, X, y):
     """

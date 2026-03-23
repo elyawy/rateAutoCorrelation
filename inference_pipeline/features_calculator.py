@@ -140,7 +140,8 @@ def calculate_bimodality_coefficient(values):
     try:
         skewness = stats.skew(values)
         kurtosis = stats.kurtosis(values)  # Excess kurtosis (already -3)
-        
+        if abs(kurtosis + 3) < 1e-6:
+            return 0.0
         # Formula uses Pearson's kurtosis (excess + 3)
         bc = (skewness**2 + 1) / (kurtosis + 3)
         

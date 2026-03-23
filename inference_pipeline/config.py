@@ -20,9 +20,8 @@ TRAINING_METHOD = 'lightgbm'    # options: 'lightgbm', 'neural_net', 'random_for
 # TRAINING_METHOD = 'neural_net'
 # TRAINING_METHOD = 'random_forest'
 
-N_TRAIN_TREES = 200  # Which trees to use for training (first N trees)
-N_SIMS_PER_TREE = 250  # How many simulations per tree to use for training (50, 100, or 200)
-USE_COMPLETE_TEST_TREES_ONLY = True  # Filter test set to only trees with complete codeml results
+N_TRAIN_TREES = 1000  # Which trees to use for training (first N trees)
+N_SIMS_PER_TREE = 125  # How many simulations per tree to use for training (50, 100, or 200)
 
 # ==========================================
 # OPTUNA HYPERPARAMETER OPTIMIZATION
@@ -62,3 +61,5 @@ AMINO_ACIDS = set('ACDEFGHIKLMNPQRSTVWY')
 # Parameter ranges for random sampling
 ALPHA_RANGE = (0.01, 5.0)       # Min and Max Alpha
 RHO_RANGE = (0.01, 0.99)       # Min and Max Rho
+SCALE_MIN = 0.01
+SCALE_MAX = 0.5

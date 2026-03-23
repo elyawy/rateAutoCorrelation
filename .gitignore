@@ -4,6 +4,7 @@ codeml_runs
 trees_old
 inference_pipeline/results
 inference_pipeline/features/features.csv
+inference_pipeline/models/lightgbm_model.pkl
 results
 .venv
 training_data

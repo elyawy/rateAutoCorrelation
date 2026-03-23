@@ -5,6 +5,7 @@ Generates random phylogenetic trees and simulates MSAs for training the inferenc
 This makes the inference pipeline independent from the main simulation pipeline.
 """
 
+import math
 import pathlib
 import random
 import numpy as np
@@ -20,14 +21,14 @@ from utils.simulation import SimulationParams, generate_random_tree, setup_sim, 
 # TRAINING DATA CONFIGURATION
 # ==========================================
 TRAINING_SEED = 1337
-N_TRAINING_TREES = 200
+N_TRAINING_TREES = 500
 N_TRAINING_SIMS_PER_TREE = 250
 
 SIM_PARAMS = SimulationParams(
     min_taxa=5,
     max_taxa=200,
     min_seq_length=50,
-    max_seq_length=5000,
+    max_seq_length=1000,
 )
 
 
@@ -45,9 +46,10 @@ def process_single_tree(tree_idx, training_data_dir):
     """
     random.seed(TRAINING_SEED + tree_idx)
     n_taxa = random.randint(SIM_PARAMS.min_taxa, SIM_PARAMS.max_taxa)
+    random_scale = 10 ** random.uniform(math.log10(config.SCALE_MIN), math.log10(config.SCALE_MAX))
 
     tree_seed = TRAINING_SEED + tree_idx * 10000
-    tree = generate_random_tree(n_taxa, tree_seed)
+    tree = generate_random_tree(n_taxa, random_scale, tree_seed)
 
     tree_name = f"tree_{tree_idx:03d}_n{n_taxa}"
     tree_dir = training_data_dir / tree_name

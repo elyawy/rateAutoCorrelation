@@ -26,7 +26,7 @@ class SimulationParams:
     max_seq_length: int = 5000
 
 
-def generate_random_tree(n_taxa: int, seed: int) -> Tree:
+def generate_random_tree(n_taxa: int, scale: float, seed: int) -> Tree:
     """Generate a random ultrametric tree with n_taxa leaves."""
     np.random.seed(seed)
     tree = Tree()
@@ -34,7 +34,7 @@ def generate_random_tree(n_taxa: int, seed: int) -> Tree:
     for node in tree.traverse():
         if node.dist == 0:
             continue
-        node.dist = np.random.exponential(scale=0.1)
+        node.dist = np.random.exponential(scale=scale)
     return tree
 
 
