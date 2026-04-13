@@ -11,13 +11,13 @@ from utils.evaluate import run_evaluation, save_scatter_plots
 # ==========================================
 # EVALUATION CONFIGURATION
 # ==========================================
-VALIDATION_SEED = 42
-N_TREES = 100
+VALIDATION_SEED = 21
+N_TREES = 10
 N_MSAS_PER_TREE = 10
 
 SIM_PARAMS = SimulationParams(
-    min_taxa=150,
-    max_taxa=150,
+    min_taxa=80,
+    max_taxa=80,
     min_seq_length=500,
     max_seq_length=500,
 )

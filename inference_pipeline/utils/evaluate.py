@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 
 import config
 from features_calculator import calculate_msa_entropy_stats
+from features_calculator import calculate_indel_features
 from utils.simulation import SimulationParams, generate_random_tree, setup_sim, simulate_msa
 
 
@@ -52,6 +53,8 @@ def run_evaluation(sim_params: SimulationParams, n_trees: int, n_msas_per_tree: 
         for msa_idx in range(n_msas_per_tree):
             sequences, true_alpha, true_rho = simulate_msa(simulator, sim_params)
             entropy_stats = calculate_msa_entropy_stats(sequences)
+            indel_features = calculate_indel_features(sequences)
+            entropy_stats.update(indel_features)
 
             all_data.append({
                 'tree': tree_name,
@@ -66,7 +69,7 @@ def run_evaluation(sim_params: SimulationParams, n_trees: int, n_msas_per_tree: 
     X = df[config.FEATURE_COLUMNS].values
     results = {}
 
-    for model_type in ['neural_net', 'lightgbm']:
+    for model_type in ['lightgbm']:
         model_file = models_dir / f"{model_type}_model.pkl"
         if not model_file.exists():
             print(f"  WARNING: {model_file} not found. Skipping {model_type}.")
@@ -77,10 +80,16 @@ def run_evaluation(sim_params: SimulationParams, n_trees: int, n_msas_per_tree: 
 
         df[f'pred_alpha_{model_type}'] = predictions[:, 0]
         df[f'pred_rho_{model_type}'] = predictions[:, 1]
+        # Calcualte R^2 and MSE for both parameters
+        r2_alpha = np.corrcoef(df['true_alpha'], df[f'pred_alpha_{model_type}'])[0, 1] ** 2
+        r2_rho = np.corrcoef(df['true_rho'], df[f'pred_rho_{model_type}'])[0, 1] ** 2
+
 
         results[model_type] = {
             'mse_alpha': float(np.mean((df['true_alpha'] - predictions[:, 0]) ** 2)),
             'mse_rho': float(np.mean((df['true_rho'] - predictions[:, 1]) ** 2)),
+            'r2_alpha': r2_alpha,
+            'r2_rho': r2_rho
         }
 
 

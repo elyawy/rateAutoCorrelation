@@ -11,11 +11,13 @@ import math
 import numpy as np
 import argparse
 import os
+import time 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import config
 from utils.simulation import SimulationParams, generate_random_tree, setup_sim, simulate_msa
 from features_calculator import calculate_msa_entropy_stats
+from features_calculator import calculate_indel_features
 
 
 # ==========================================
@@ -23,7 +25,7 @@ from features_calculator import calculate_msa_entropy_stats
 # ==========================================
 TRAINING_SEED = 1337
 N_TRAINING_TREES = 1000
-N_TRAINING_SIMS_PER_TREE = 125
+N_TRAINING_SIMS_PER_TREE = 100
 
 SIM_PARAMS = SimulationParams(
     min_taxa=20,
@@ -62,7 +64,9 @@ def process_single_tree(tree_idx):
     for msa_idx in range(N_TRAINING_SIMS_PER_TREE):
         sequences, true_alpha, true_rho = simulate_msa(simulator, SIM_PARAMS)
         features = calculate_msa_entropy_stats(sequences)
-
+        indel_features = calculate_indel_features(sequences)
+        features.update(indel_features)
+        
         row = {
             'tree': tree_name,
             'simulation': f"sim_{msa_idx + 1:03d}_a{true_alpha}_r{true_rho}",

@@ -28,15 +28,15 @@ from utils.simulation import SimulationParams, generate_random_tree, setup_sim, 
 # ==========================================
 # EVALUATION CONFIGURATION
 # ==========================================
-VALIDATION_SEED = 42
+VALIDATION_SEED = 21
 N_TREES = 10
-N_MSAS_PER_TREE = 1
+N_MSAS_PER_TREE = 10
 
 SIM_PARAMS = SimulationParams(
-    min_taxa=25,
-    max_taxa=25,
-    min_seq_length=200,
-    max_seq_length=200,
+    min_taxa=20,
+    max_taxa=20,
+    min_seq_length=1000,
+    max_seq_length=1000,
 )
 
 CODEML_EXECUTABLE = "codeml"

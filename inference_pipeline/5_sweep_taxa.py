@@ -24,7 +24,7 @@ from utils.evaluate import run_evaluation
 SWEEP_SEED = 123
 N_TREES = 10
 N_MSAS_PER_TREE = 10
-SEQ_LENGTH = 250
+SEQ_LENGTH = 200
 
 TAXA_TO_SWEEP = [5, 10, 20, 40, 80, 160, 200]
 

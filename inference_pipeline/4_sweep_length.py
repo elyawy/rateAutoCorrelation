@@ -26,7 +26,7 @@ N_TREES = 10
 N_MSAS_PER_TREE = 10
 
 # Fixed lengths to evaluate (min == max forces a single length per run)
-LENGTHS_TO_SWEEP = [50, 100, 250, 500, 1000, 2500, 5000, 10000]
+LENGTHS_TO_SWEEP = [50, 100, 250, 500, 1000]#, 2500, 5000, 10000]
 
 # Taxa range stays constant across the sweep
 MIN_TAXA = 150
@@ -68,10 +68,13 @@ def main():
         for model_type, metrics in results.items():
             row[f'{model_type}_mse_alpha'] = metrics['mse_alpha']
             row[f'{model_type}_mse_rho'] = metrics['mse_rho']
+            row[f'{model_type}_r2_alpha'] = metrics['r2_alpha']
+            row[f'{model_type}_r2_rho'] = metrics['r2_rho']
         summary_rows.append(row)
 
         for model_type, metrics in results.items():
             print(f"  {model_type}: alpha MSE={metrics['mse_alpha']:.6f}, rho MSE={metrics['mse_rho']:.6f}")
+            print(f"  {model_type}: alpha R^2={metrics['r2_alpha']:.6f}, rho R^2={metrics['r2_rho']:.6f}")
 
     # Save summary CSV
     summary_df = pd.DataFrame(summary_rows)
@@ -116,6 +119,34 @@ def _plot_sweep(summary_df, output_dir):
         plt.savefig(plot_file, dpi=150)
         plt.close()
         print(f"  Plot saved: {plot_file}")
+    """Plot R^2 vs sequence length for all models, one figure per parameter."""
+    for param in ['alpha', 'rho']:
+        fig, ax = plt.subplots(figsize=(9, 5))
+
+        for model_type in model_types:
+            col = f'{model_type}_r2_{param}'
+            if col not in summary_df.columns:
+                continue
+            ax.plot(
+                summary_df['seq_length'],
+                summary_df[col],
+                marker='o',
+                label=model_type.replace('_', ' ').title()
+            )
+
+        ax.set_xlabel('Sequence length (aa)', fontsize=12)
+        ax.set_ylabel('$R^2$', fontsize=12)
+        ax.set_title(f'$R^2$ vs Sequence Length — {param.upper()}', fontsize=14)
+        ax.set_xscale('log')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        plot_file = output_dir / f"sweep_{param}_r2.png"
+        plt.tight_layout()
+        plt.savefig(plot_file, dpi=150)
+        plt.close()
+        print(f"  Plot saved: {plot_file}")
+
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from ete3 import Tree
 try:
     from msasim import protocol, simulator as sim
     from msasim.msa import Msa
+    from msasim.distributions import ZipfDistribution
     from msasim.constants import SITE_RATE_MODELS
     from msasim.constants import MODEL_CODES
 except ImportError:
@@ -51,9 +52,12 @@ def setup_sim(tree: Tree, sim_seed: int):
     """
     newick_string = tree.write(format=1)
     simulation_protocol = protocol.SimProtocol(newick_string)
-    simulation_protocol.set_insertion_rates(0.0)
-    simulation_protocol.set_deletion_rates(0.0)
-    simulation_protocol.set_site_rate_model(SITE_RATE_MODELS.SIMPLE)
+    # indel model parameters based on mammalian rates from https://doi.org/10.1093/bioinformatics/btaf686
+    simulation_protocol.set_insertion_rates(0.007)
+    simulation_protocol.set_deletion_rates(0.035)
+    simulation_protocol.set_insertion_length_distributions(ZipfDistribution(p=1.53, truncation=50))
+    simulation_protocol.set_deletion_length_distributions(ZipfDistribution(p=1.11, truncation=50))
+    simulation_protocol.set_site_rate_model(SITE_RATE_MODELS.INDEL_AWARE)
     simulation_protocol.set_seed(sim_seed)
     simulator = sim.Simulator(simulation_protocol, simulation_type=sim.SIMULATION_TYPE.PROTEIN)
     return simulator
@@ -98,3 +102,11 @@ def sequences_to_fasta(sequences: list) -> str:
         lines.append(f">seq_{i}")
         lines.append(seq)
     return "\n".join(lines)
+
+
+# sim = setup_sim(generate_random_tree(150, scale=0.01, seed=50), sim_seed=50)
+
+# sequences, true_alpha, true_rho = simulate_msa(sim, SimulationParams(min_seq_length=500, max_seq_length=500))
+
+
+# print("\n".join(sequences)) 

@@ -21,7 +21,7 @@ TRAINING_METHOD = 'lightgbm'    # options: 'lightgbm', 'neural_net', 'random_for
 # TRAINING_METHOD = 'random_forest'
 
 N_TRAIN_TREES = 1000  # Which trees to use for training (first N trees)
-N_SIMS_PER_TREE = 125  # How many simulations per tree to use for training (50, 100, or 200)
+N_SIMS_PER_TREE = 100  # How many simulations per tree to use for training (50, 100, or 200)
 
 # ==========================================
 # OPTUNA HYPERPARAMETER OPTIMIZATION
@@ -50,8 +50,16 @@ FEATURE_COLUMNS = [
     # Multi-lag autocorrelations (lags 2-10, lag1 already exists above)
     'lag2_autocorr', 'lag3_autocorr', 'lag4_autocorr', 'lag5_autocorr',
     'lag6_autocorr', 'lag7_autocorr', 'lag8_autocorr', 'lag9_autocorr', 'lag10_autocorr',
-]
+ 
+    # Run-length features (high- and low-entropy runs separately)
+    'high_run_mean', 'high_run_var', 'high_run_max', 'high_run_count',
+    'low_run_mean',  'low_run_var',  'low_run_max',  'low_run_count',
 
+    # Indel-related features (from msastats)
+    'avg_gap_size', 'msa_len', 'msa_max_len', 'msa_min_len', 'tot_num_gaps',
+    'num_gaps_len_one', 'num_gaps_len_two', 'num_gaps_len_three', 'num_gaps_len_at_least_four'
+
+]
 
 # ==========================================
 # AMINO ACID ALPHABET

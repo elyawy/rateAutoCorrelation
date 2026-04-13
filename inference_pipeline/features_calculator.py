@@ -7,6 +7,8 @@ import numpy as np
 from collections import Counter
 from Bio import Phylo
 from io import StringIO
+import msastats
+
 import config
 
 
@@ -140,8 +142,7 @@ def calculate_bimodality_coefficient(values):
     try:
         skewness = stats.skew(values)
         kurtosis = stats.kurtosis(values)  # Excess kurtosis (already -3)
-        if abs(kurtosis + 3) < 1e-6:
-            return 0.0
+        
         # Formula uses Pearson's kurtosis (excess + 3)
         bc = (skewness**2 + 1) / (kurtosis + 3)
         
@@ -217,6 +218,83 @@ def calculate_autocorrelation_lags(values, max_lag=10):
     
     return result
 
+
+def calculate_run_length_features(entropies):
+    """
+    Calculate run-length statistics for high- and low-entropy sites separately.
+
+    Sites are binarized at the median entropy. Consecutive sites of the same
+    type form a "run". Summary statistics of those runs are informative about
+    rho (clustering) and potentially alpha (asymmetry between high/low runs).
+
+    Args:
+        entropies: numpy array of per-site entropy values
+
+    Returns:
+        dict with keys:
+            high_run_mean    - mean run length of high-entropy sites
+            high_run_var     - variance of run lengths of high-entropy sites
+            high_run_max     - longest run of high-entropy sites
+            high_run_count   - number of high-entropy runs, normalised by L
+            low_run_mean     - mean run length of low-entropy sites
+            low_run_var      - variance of run lengths of low-entropy sites
+            low_run_max      - longest run of low-entropy sites
+            low_run_count    - number of low-entropy runs, normalised by L
+    """
+    if len(entropies) < 10:
+        return {
+            'high_run_mean': 0.0, 'high_run_var': 0.0,
+            'high_run_max': 0.0,  'high_run_count': 0.0,
+            'low_run_mean': 0.0,  'low_run_var': 0.0,
+            'low_run_max': 0.0,   'low_run_count': 0.0,
+        }
+
+    threshold = float(np.median(entropies))
+    is_high = entropies >= threshold  # boolean array
+
+    high_runs = []
+    low_runs = []
+    current_val = is_high[0]
+    current_len = 1
+
+    for val in is_high[1:]:
+        if val == current_val:
+            current_len += 1
+        else:
+            (high_runs if current_val else low_runs).append(current_len)
+            current_val = val
+            current_len = 1
+    # flush last run
+    (high_runs if current_val else low_runs).append(current_len)
+
+    L = len(entropies)
+
+    def _summarise(runs, L):
+        if not runs:
+            return 0.0, 0.0, 0.0, 0.0
+        arr = np.array(runs, dtype=float)
+        return (
+            float(np.mean(arr)),
+            float(np.var(arr)),
+            float(np.max(arr)),
+            len(runs) / L,          # normalised count
+        )
+
+    hm, hv, hx, hc = _summarise(high_runs, L)
+    lm, lv, lx, lc = _summarise(low_runs, L)
+
+    return {
+        'high_run_mean':  hm,
+        'high_run_var':   hv,
+        'high_run_max':   hx,
+        'high_run_count': hc,
+        'low_run_mean':   lm,
+        'low_run_var':    lv,
+        'low_run_max':    lx,
+        'low_run_count':  lc,
+    }
+
+
 def calculate_msa_entropy_stats(sequences):
     """
     Calculate entropy statistics for an entire MSA.
@@ -234,6 +312,7 @@ def calculate_msa_entropy_stats(sequences):
         4. Calculate lag-1 autocorrelation
         5. Calculate histogram bins
         6. Calculate multi-lag autocorrelations
+        7. Calculate run-length features
     """
     if not sequences or len(sequences) == 0:
         return {
@@ -245,7 +324,11 @@ def calculate_msa_entropy_stats(sequences):
             'entropy_kurtosis': 0.0,
             'bimodality_coefficient': 0.0,
             **{f'entropy_bin_{i}': 0.0 for i in range(10)},
-            **{f'lag{i}_autocorr': 0.0 for i in range(1, 11)}
+            **{f'lag{i}_autocorr': 0.0 for i in range(1, 11)},
+            'high_run_mean': 0.0, 'high_run_var': 0.0,
+            'high_run_max': 0.0,  'high_run_count': 0.0,
+            'low_run_mean': 0.0,  'low_run_var': 0.0,
+            'low_run_max': 0.0,   'low_run_count': 0.0,
         }
     
     # Get alignment length
@@ -277,6 +360,9 @@ def calculate_msa_entropy_stats(sequences):
 
     # Calculate Gamma shape feature
     gamma_shape = fit_gamma_to_values(entropies)
+
+    # Calculate run-length features
+    run_length_features = calculate_run_length_features(entropies)
     
     # Calculate statistics
     stats = {
@@ -289,7 +375,8 @@ def calculate_msa_entropy_stats(sequences):
         'bimodality_coefficient': bimodality_coef,
         'gamma_shape_entropy': gamma_shape,
         **histogram_features,
-        **autocorr_features
+        **autocorr_features,
+        **run_length_features,
     }
     
     return stats
@@ -406,6 +493,24 @@ def read_fasta_sequences(fasta_file):
     
     return sequences
 
+# calculate indel related features:
+# return them with the following lower case names:
+# 'avg_gap_size', 'msa_len', 'msa_max_len', 'msa_min_len', 'tot_num_gaps', 'num_gaps_len_one', 'num_gaps_len_two', 'num_gaps_len_three', 'num_gaps_len_at_least_four'
+def calculate_indel_features(sequences):
+    stats = msastats.calculate_msa_stats(sequences)[:9]
+    stats = {
+        'avg_gap_size': stats[0],
+        'msa_len': stats[1],
+        'msa_max_len': stats[2],
+        'msa_min_len': stats[3],
+        'tot_num_gaps': stats[4],
+        'num_gaps_len_one': stats[5],
+        'num_gaps_len_two': stats[6],
+        'num_gaps_len_three': stats[7],
+        'num_gaps_len_at_least_four': stats[8],
+    }
+    return stats
+
 if __name__ == "__main__":
     # Example usage
     example_sequences = [
@@ -423,3 +528,6 @@ if __name__ == "__main__":
     stats = calculate_alignment_features(example_sequences)
     print("Alignment Features:")
     print(stats)
+    indel_stats = calculate_indel_features(example_sequences)
+    print("Indel Features:")
+    print(indel_stats)
