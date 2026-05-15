@@ -29,8 +29,8 @@ N_MSAS_PER_TREE = 10
 LENGTHS_TO_SWEEP = [50, 100, 250, 500, 1000]#, 2500, 5000, 10000]
 
 # Taxa range stays constant across the sweep
-MIN_TAXA = 150
-MAX_TAXA = 150
+MIN_TAXA = 20
+MAX_TAXA = 20
 
 
 def main():

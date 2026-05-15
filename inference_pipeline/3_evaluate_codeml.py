@@ -35,11 +35,13 @@ N_MSAS_PER_TREE = 10
 SIM_PARAMS = SimulationParams(
     min_taxa=20,
     max_taxa=20,
-    min_seq_length=1000,
-    max_seq_length=1000,
+    min_seq_length=500,
+    max_seq_length=500,
 )
 
-CODEML_EXECUTABLE = "codeml"
+CODEML_ROOT = "/home/pupkolab/Apps/paml-4.10.10-linux-x86_64"
+CODEML_EXECUTABLE = f"{CODEML_ROOT}/bin/codeml"
+WAG_DAT = f"{CODEML_ROOT}/dat/wag.dat"
 CODEML_TIMEOUT = 3600  # seconds per run
 
 
@@ -75,16 +77,6 @@ CONTROL_TEMPLATE = """\
 """
 
 
-def find_wag_dat():
-    """Find wag.dat by running codeml and inspecting its default control file."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        subprocess.run([CODEML_EXECUTABLE], cwd=tmpdir, capture_output=True)
-        ctl = pathlib.Path(tmpdir) / "codeml.ctl"
-        if ctl.exists():
-            match = re.search(r'aaRatefile\s*=\s*(.+\.dat)', ctl.read_text())
-            if match:
-                return match.group(1).replace('jones.dat', 'wag.dat').strip()
-    return "wag.dat"
 
 
 def write_phylip(sequences, path):
@@ -141,7 +133,7 @@ def run_codeml_on_msa(sequences, tree, wag_dat):
             wagfile=wag_dat,
         )
         ctl_file.write_text(ctl_content)
-
+        print(f"Running codeml in {tmpdir}...")
         try:
             result = subprocess.run(
                 [CODEML_EXECUTABLE, ctl_file.name],
@@ -209,7 +201,7 @@ def main():
     print(f"Total MSAs: {N_TREES * N_MSAS_PER_TREE}")
     print()
 
-    wag_dat = find_wag_dat()
+    wag_dat = WAG_DAT
     print(f"WAG dat file: {wag_dat}")
     print()
 

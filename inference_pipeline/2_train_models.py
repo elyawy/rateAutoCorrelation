@@ -16,6 +16,8 @@ import optuna
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import argparse
+import warnings
+warnings.filterwarnings('ignore', message='X does not have valid feature names')
 
 import config
 
@@ -80,13 +82,19 @@ def objective_neural_net(trial, X, y):
 def objective_lightgbm(trial, X, y, groups):
     from models.lightgbm_model import LightGBMModel
 
+
     params = {
         'num_leaves':        trial.suggest_int('num_leaves', 20, 300),
-        'learning_rate':     trial.suggest_float('learning_rate', 1e-3, 0.3, log=True),
-        'n_estimators':      trial.suggest_int('n_estimators', 100, 500),
+        'max_depth':         trial.suggest_int('max_depth', 4, 12),
+        'learning_rate':     trial.suggest_float('learning_rate', 1e-3, 0.1, log=True),
+        'n_estimators':      trial.suggest_int('n_estimators', 300, 2000),
         'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
         'subsample':         trial.suggest_float('subsample', 0.5, 1.0),
+        'subsample_freq':    1,
         'colsample_bytree':  trial.suggest_float('colsample_bytree', 0.5, 1.0),
+        'reg_alpha':         trial.suggest_float('reg_alpha', 1e-8, 10.0, log=True),
+        'reg_lambda':        trial.suggest_float('reg_lambda', 1e-8, 10.0, log=True),
+        'min_split_gain':    trial.suggest_float('min_split_gain', 0.0, 1.0),
     }
 
     model = LightGBMModel(random_state=config.MASTER_SEED)
