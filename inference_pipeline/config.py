@@ -26,8 +26,8 @@ N_SIMS_PER_TREE = 100  # How many simulations per tree to use for training (50, 
 # ==========================================
 # OPTUNA HYPERPARAMETER OPTIMIZATION
 # ==========================================
-N_OPTUNA_TRIALS = 30  # Number of trials for hyperparameter search
-
+N_OPTUNA_TRIALS = 200  # Number of trials for hyperparameter search
+N_OPTUNA_TREES = 100  # Number of trees to use for each Optuna trial (subset of training trees)
 # ==========================================
 # FEATURE CONFIGURATION
 # ==========================================
@@ -45,7 +45,7 @@ FEATURE_COLUMNS = [
     
     # Histogram bins (10 bins)
     'entropy_bin_0', 'entropy_bin_1', 'entropy_bin_2', 'entropy_bin_3', 'entropy_bin_4',
-    'entropy_bin_5', 'entropy_bin_6', 'entropy_bin_7', 'entropy_bin_8', 'entropy_bin_9',
+    # 'entropy_bin_5', 'entropy_bin_6', 'entropy_bin_7', 'entropy_bin_8', 'entropy_bin_9',
     
     # Multi-lag autocorrelations (lags 2-10, lag1 already exists above)
     'lag2_autocorr', 'lag3_autocorr', 'lag4_autocorr', 'lag5_autocorr',
@@ -54,6 +54,10 @@ FEATURE_COLUMNS = [
     # Run-length features (high- and low-entropy runs separately)
     'high_run_mean', 'high_run_var', 'high_run_max', 'high_run_count',
     'low_run_mean',  'low_run_var',  'low_run_max',  'low_run_count',
+
+    # Consensus sequence features
+    # 'cons_lag1_phi', 'cons_lag2_phi', 'cons_lag5_phi', 'cons_lag10_phi', 'cons_lag20_phi',
+    'cons_decay_A', 'cons_decay_rho',
 
     # Indel-related features (from msastats)
     'avg_gap_size', 'msa_len', 'msa_max_len', 'msa_min_len', 'tot_num_gaps',
@@ -70,4 +74,4 @@ AMINO_ACIDS = set('ACDEFGHIKLMNPQRSTVWY')
 ALPHA_RANGE = (0.01, 5.0)       # Min and Max Alpha
 RHO_RANGE = (0.01, 0.99)       # Min and Max Rho
 SCALE_MIN = 0.01
-SCALE_MAX = 0.5
+SCALE_MAX = 0.2

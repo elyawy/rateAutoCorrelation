@@ -15,6 +15,8 @@ import joblib
 import optuna
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+from models.lightgbm_model import LightGBMModel
+
 import argparse
 import warnings
 warnings.filterwarnings('ignore', message='X does not have valid feature names')
@@ -80,31 +82,29 @@ def objective_neural_net(trial, X, y):
 
 
 def objective_lightgbm(trial, X, y, groups):
-    from models.lightgbm_model import LightGBMModel
-
 
     params = {
         'num_leaves':        trial.suggest_int('num_leaves', 20, 300),
-        'max_depth':         trial.suggest_int('max_depth', 4, 12),
         'learning_rate':     trial.suggest_float('learning_rate', 1e-3, 0.1, log=True),
-        'n_estimators':      trial.suggest_int('n_estimators', 300, 2000),
+        'n_estimators':      2000,  # fixed — let early stopping decide
         'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
         'subsample':         trial.suggest_float('subsample', 0.5, 1.0),
         'subsample_freq':    1,
         'colsample_bytree':  trial.suggest_float('colsample_bytree', 0.5, 1.0),
         'reg_alpha':         trial.suggest_float('reg_alpha', 1e-8, 10.0, log=True),
         'reg_lambda':        trial.suggest_float('reg_lambda', 1e-8, 10.0, log=True),
-        'min_split_gain':    trial.suggest_float('min_split_gain', 0.0, 1.0),
+        'min_split_gain':    trial.suggest_float('min_split_gain', 1e-8, 1.0, log=True),
     }
 
     model = LightGBMModel(random_state=config.MASTER_SEED)
     model.set_params(**params)
     model.train(X, y, groups=groups)
 
+    trial.set_user_attr('best_n_estimators', model.best_n_estimators)
     return model.cv_score
 
 
-def train_final_model(best_params, X, y, groups, input_size):
+def train_final_model(best_params, X, y, groups, input_size, best_n_estimators=None):
     if config.TRAINING_METHOD == 'random_forest':
         from models.random_forest import RandomForestModel
         from sklearn.ensemble import RandomForestRegressor
@@ -128,7 +128,8 @@ def train_final_model(best_params, X, y, groups, input_size):
         from models.lightgbm_model import LightGBMModel
 
         model = LightGBMModel(random_state=config.MASTER_SEED)
-        model.set_params(**best_params)
+        best_params_final = {**best_params, 'n_estimators': best_n_estimators}
+        model.set_params(**best_params_final)
         model.train(X, y)
 
     else:
@@ -182,6 +183,14 @@ def main():
     y_train = np.asarray(y_train)
     print(f"Training data shape: X={X_train.shape}, y={y_train.shape}")
     print(f"Number of unique trees: {len(set(train_groups))}")
+
+    # Subsample trees for Optuna — faster trials, more exploration
+    optuna_trees = sorted(set(train_groups))[:config.N_OPTUNA_TREES]
+    optuna_mask = np.isin(train_groups, optuna_trees)
+    X_optuna = X_train[optuna_mask]
+    y_optuna = y_train[optuna_mask]
+    groups_optuna = train_groups[optuna_mask]
+    print(f"Optuna subset: {len(optuna_trees)} trees ({X_optuna.shape[0]} MSAs)")
 
     models_dir = pathlib.Path("models")
     models_dir.mkdir(exist_ok=True)
@@ -244,7 +253,7 @@ def main():
         )
     elif config.TRAINING_METHOD == 'lightgbm':
         study.optimize(
-            lambda trial: objective_lightgbm(trial, X_train, y_train, train_groups),
+            lambda trial: objective_lightgbm(trial, X_optuna, y_optuna, groups_optuna),
             n_trials=config.N_OPTUNA_TRIALS,
             show_progress_bar=True,
         )
@@ -269,7 +278,8 @@ def main():
         X_train,
         y_train,
         train_groups,
-        input_size=X_train.shape[1]
+        input_size=X_train.shape[1],
+        best_n_estimators=study.best_trial.user_attrs.get('best_n_estimators'),
     )
 
     model_file = models_dir / f"{config.TRAINING_METHOD}_model.pkl"

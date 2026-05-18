@@ -16,8 +16,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import config
 from utils.simulation import SimulationParams, generate_random_tree, setup_sim, simulate_msa
-from features_calculator import calculate_msa_entropy_stats
-from features_calculator import calculate_indel_features
+from features_calculator import calculate_all_features
 
 
 # ==========================================
@@ -35,7 +34,7 @@ SIM_PARAMS = SimulationParams(
 )
 
 SCALE_MIN = 0.01
-SCALE_MAX = 0.5
+SCALE_MAX = 0.2
 
 
 def process_single_tree(tree_idx):
@@ -49,7 +48,7 @@ def process_single_tree(tree_idx):
     n_taxa = random.randint(SIM_PARAMS.min_taxa, SIM_PARAMS.max_taxa)
 
     # Sample branch length scale log-uniformly
-    random_scale = 10 ** random.uniform(math.log10(SCALE_MIN), math.log10(SCALE_MAX))
+    random_scale = 10 ** random.uniform(math.log10(config.SCALE_MIN), math.log10(config.SCALE_MAX))
 
     tree_seed = TRAINING_SEED + tree_idx * 10000
     tree = generate_random_tree(n_taxa, scale=random_scale, seed=tree_seed)
@@ -62,11 +61,10 @@ def process_single_tree(tree_idx):
 
     rows = []
     for msa_idx in range(N_TRAINING_SIMS_PER_TREE):
+        # Time each part of the simulation and feature extraction for debugging
         sequences, true_alpha, true_rho = simulate_msa(simulator, SIM_PARAMS)
-        features = calculate_msa_entropy_stats(sequences)
-        indel_features = calculate_indel_features(sequences)
-        features.update(indel_features)
-        
+
+        features = calculate_all_features(sequences)
         row = {
             'tree': tree_name,
             'simulation': f"sim_{msa_idx + 1:03d}_a{true_alpha}_r{true_rho}",
@@ -74,6 +72,7 @@ def process_single_tree(tree_idx):
             'true_rho': true_rho,
             **{k: features[k] for k in config.FEATURE_COLUMNS if k in features}
         }
+
         rows.append(row)
 
     return rows

@@ -16,8 +16,8 @@ N_TREES = 20
 N_MSAS_PER_TREE = 20
 
 SIM_PARAMS = SimulationParams(
-    min_taxa=2,
-    max_taxa=10,
+    min_taxa=20,
+    max_taxa=200,
     min_seq_length=200,
     max_seq_length=500,
 )

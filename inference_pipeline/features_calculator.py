@@ -3,6 +3,7 @@ Shannon Entropy and Parsimony calculation for Multiple Sequence Alignments.
 
 Provides functions to calculate entropy and parsimony statistics across MSA columns.
 """
+import warnings
 import numpy as np
 from collections import Counter
 from Bio import Phylo
@@ -10,6 +11,8 @@ from io import StringIO
 import msastats
 
 import config
+
+warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 
 def calculate_column_entropy(column):
@@ -314,39 +317,18 @@ def calculate_msa_entropy_stats(sequences):
         6. Calculate multi-lag autocorrelations
         7. Calculate run-length features
     """
-    if not sequences or len(sequences) == 0:
-        return {
-            'avg_entropy': 0.0,
-            'entropy_variance': 0.0,
-            'max_entropy': 0.0,
-            'lag1_autocorr': 0.0,
-            'entropy_skewness': 0.0,
-            'entropy_kurtosis': 0.0,
-            'bimodality_coefficient': 0.0,
-            **{f'entropy_bin_{i}': 0.0 for i in range(10)},
-            **{f'lag{i}_autocorr': 0.0 for i in range(1, 11)},
-            'high_run_mean': 0.0, 'high_run_var': 0.0,
-            'high_run_max': 0.0,  'high_run_count': 0.0,
-            'low_run_mean': 0.0,  'low_run_var': 0.0,
-            'low_run_max': 0.0,   'low_run_count': 0.0,
-        }
+    alignment = np.array([list(seq) for seq in sequences])  # (N, L)
+    alphabet = np.array(list('ACDEFGHIKLMNPQRSTVWY'))
     
-    # Get alignment length
-    n_columns = len(sequences[0])
+    # count each amino acid per site: (20, L)
+    counts = np.array([(alignment == aa).sum(axis=0) for aa in alphabet])
     
-    # Verify all sequences have the same length
-    if not all(len(seq) == n_columns for seq in sequences):
-        raise ValueError("All sequences must have the same length (alignment required)")
+    total = counts.sum(axis=0)  # (L,) non-gap counts
+    with np.errstate(divide='ignore', invalid='ignore'):
+        p = np.where(counts > 0, counts / total, 0)  # (20, L)
+        log_p = np.where(p > 0, np.log2(p), 0)
     
-    # Calculate entropy for each column
-    entropies = []
-    for col_idx in range(n_columns):
-        column = [seq[col_idx] for seq in sequences]
-        entropy = calculate_column_entropy(column)
-        entropies.append(entropy)
-    
-    # Convert to numpy array for easy statistics
-    entropies = np.array(entropies)
+    entropies = -(p * log_p).sum(axis=0)  # (L,)
     
     entropy_skewness, entropy_kurtosis = calculate_distribution_shape_features(entropies)
     # Calculate bimodality coefficient
@@ -380,6 +362,82 @@ def calculate_msa_entropy_stats(sequences):
     }
     
     return stats
+
+def calc_boolean_consensus_msa(sequences):
+    # convert the list of sequences into a 2D numpy array of shape (n_taxa, n_sites)
+    alignment = np.array([list(seq) for seq in sequences])
+    gap = '-'
+    non_gap = alignment != gap
+
+    alphabet = np.array(list('ACDEFGHIKLMNPQRSTVWY'))
+    counts = np.array([(alignment == aa) for aa in alphabet])  # (20, N, L)
+    counts *= non_gap
+    consensus_idx = counts.sum(axis=1).argmax(axis=0)  # (L,)
+    consensus = alphabet[consensus_idx]  # (L,)
+
+    r = np.where(non_gap, alignment != consensus, np.nan).astype(float)
+    return r
+
+
+def calculate_msa_conservation_stats(sequences):
+    from scipy.optimize import curve_fit
+    lags = [1, 2, 5, 10, 20]
+    r = calc_boolean_consensus_msa(sequences)  # (N, L)
+    n_taxa, n_sites = r.shape
+    features = {}
+    phi_values = []
+
+    for lag in lags:
+        X = r[:, :n_sites - lag]   # (N, L-lag)
+        Y = r[:, lag:]             # (N, L-lag)
+
+        valid = ~np.isnan(X) & ~np.isnan(Y)  # (N, L-lag)
+        n_valid = valid.sum(axis=0)           # (L-lag,)
+
+        X = np.where(valid, X, np.nan)
+        Y = np.where(valid, Y, np.nan)
+
+        mean_x = np.nanmean(X, axis=0)
+        mean_y = np.nanmean(Y, axis=0)
+        std_x  = np.nanstd(X, axis=0)
+        std_y  = np.nanstd(Y, axis=0)
+
+        cov = np.nanmean((X - mean_x) * (Y - mean_y), axis=0)
+        good = (std_x > 1e-10) & (std_y > 1e-10) & (n_valid >= 10)
+        phi = np.where(good, cov / (std_x * std_y), np.nan)
+
+        phi_mean = float(np.nanmean(phi)) if good.any() else 0.0
+        features[f'cons_lag{lag}_phi'] = phi_mean
+        phi_values.append(phi_mean)
+
+
+
+    # Fit exponential decay: phi(lag) = A * decay^lag
+    # decay constant is a direct estimate of rho
+    def exp_decay(lag, A, decay):
+        return A * np.power(decay, lag)
+ 
+    try:
+        lags_arr = np.array(lags, dtype=float)
+        phi_arr = np.array(phi_values)
+        if np.any(phi_arr > 1e-6):
+            popt, _ = curve_fit(
+                exp_decay, lags_arr, phi_arr,
+                p0=[phi_arr[0], 0.5],
+                bounds=([0, 0], [1, 1]),
+                maxfev=1000
+            )
+            features['cons_decay_A'] = float(popt[0])
+            features['cons_decay_rho'] = float(popt[1])
+        else:
+            features['cons_decay_A'] = 0.0
+            features['cons_decay_rho'] = 0.0
+    except Exception:
+        features['cons_decay_A'] = 0.0
+        features['cons_decay_rho'] = 0.0
+ 
+    return features
+
 
 def calculate_alignment_features(sequences):
     """
@@ -511,23 +569,45 @@ def calculate_indel_features(sequences):
     }
     return stats
 
-if __name__ == "__main__":
-    # Example usage
-    example_sequences = [
-        "ACDEFGHIKLMNPQRSTVWY",
-        "ACDEFGHIKLPNPQRSTVW-",
-        "ACDEFGHIKLMNPQRSTV--",
-        "ACDEFGHIKLMNPQRSTVWY"
-    ]
-    stats = calculate_msa_entropy_stats(example_sequences)
-    print("Entropy Statistics:")
-    print(stats)
-    stats = calculate_gamma_shape_features(example_sequences)
-    print("Gamma Shape Features:")
-    print(stats)
-    stats = calculate_alignment_features(example_sequences)
-    print("Alignment Features:")
-    print(stats)
-    indel_stats = calculate_indel_features(example_sequences)
-    print("Indel Features:")
-    print(indel_stats)
+
+def calculate_all_features(sequences) -> dict:
+    """
+    Single entry point for feature extraction used by both training and evaluation.
+    Add or remove feature groups here — callers never need to change.
+    """
+    features = calculate_msa_entropy_stats(sequences)
+    features.update(calculate_msa_conservation_stats(sequences))
+    features.update(calculate_indel_features(sequences))
+    return features
+
+
+    # if __name__ == "__main__":
+    #     # Example usage
+    #     example_sequences = [
+    #         "ACDEFGHIKLMNPQRSTVWY",
+    #         "ACDEFGHIKLPNPQRSTVW-",
+    #         "ACDEFGHIKLMNMQRSTV--",
+    #         "ACDEFGHIKLMNPQRSTVWY",
+    #         "ACDEFGHIKLLNMQRSTVWY",
+    #         "ACDEFGHIKLMNPQRSTVWY",
+    #         "ACDEFGHIKLMNPQRSTVWY",
+    #         "ACDEFGHIKLMNPQRSTVWY",
+    #         "ACDEFGHIKLPNMQRSTVWY",
+    #         "ACDEFGHIKLMNPQRSTVWY",
+    #         "ACDEFGHIKLMNPQRSTVWY",
+    #     ]
+        # stats = calculate_msa_entropy_stats(example_sequences)
+    # print("Entropy Statistics:")
+    # print(stats)
+    # stats = calculate_gamma_shape_features(example_sequences)
+    # print("Gamma Shape Features:")
+    # print(stats)
+    # stats = calculate_alignment_features(example_sequences)
+    # print("Alignment Features:")
+    # print(stats)
+    # indel_stats = calculate_indel_features(example_sequences)
+    # print("Indel Features:")
+    # print(indel_stats)
+    # stats = calculate_msa_conservation_stats(example_sequences)
+    # print("Conservation Statistics:")
+    # print(stats)

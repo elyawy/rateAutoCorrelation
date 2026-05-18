@@ -10,8 +10,7 @@ import joblib
 import matplotlib.pyplot as plt
 
 import config
-from features_calculator import calculate_msa_entropy_stats
-from features_calculator import calculate_indel_features
+from features_calculator import calculate_all_features
 from utils.simulation import SimulationParams, generate_random_tree, setup_sim, simulate_msa
 
 
@@ -52,45 +51,41 @@ def run_evaluation(sim_params: SimulationParams, n_trees: int, n_msas_per_tree: 
 
         for msa_idx in range(n_msas_per_tree):
             sequences, true_alpha, true_rho = simulate_msa(simulator, sim_params)
-            entropy_stats = calculate_msa_entropy_stats(sequences)
-            indel_features = calculate_indel_features(sequences)
-            entropy_stats.update(indel_features)
 
+            all_stats = calculate_all_features(sequences)
             all_data.append({
                 'tree': tree_name,
                 'msa_idx': msa_idx,
                 'n_taxa': n_taxa,
                 'true_alpha': true_alpha,
                 'true_rho': true_rho,
-                **{col: entropy_stats[col] for col in config.FEATURE_COLUMNS if col in entropy_stats}
+                **{col: all_stats[col] for col in config.FEATURE_COLUMNS if col in all_stats}
             })
 
     df = pd.DataFrame(all_data)
     X = df[config.FEATURE_COLUMNS].values
     results = {}
+    model_type = config.TRAINING_METHOD
+    model_file = models_dir / f"{model_type}_model.pkl"
+    if not model_file.exists():
+        raise FileNotFoundError(f"Trained model file not found: {model_file}")
 
-    for model_type in ['lightgbm']:
-        model_file = models_dir / f"{model_type}_model.pkl"
-        if not model_file.exists():
-            print(f"  WARNING: {model_file} not found. Skipping {model_type}.")
-            continue
+    model = joblib.load(model_file)
+    predictions = model.predict(X)
 
-        model = joblib.load(model_file)
-        predictions = model.predict(X)
-
-        df[f'pred_alpha_{model_type}'] = predictions[:, 0]
-        df[f'pred_rho_{model_type}'] = predictions[:, 1]
-        # Calcualte R^2 and MSE for both parameters
-        r2_alpha = np.corrcoef(df['true_alpha'], df[f'pred_alpha_{model_type}'])[0, 1] ** 2
-        r2_rho = np.corrcoef(df['true_rho'], df[f'pred_rho_{model_type}'])[0, 1] ** 2
+    df[f'pred_alpha_{model_type}'] = predictions[:, 0]
+    df[f'pred_rho_{model_type}'] = predictions[:, 1]
+    # Calcualte R^2 and MSE for both parameters
+    r2_alpha = np.corrcoef(df['true_alpha'], df[f'pred_alpha_{model_type}'])[0, 1] ** 2
+    r2_rho = np.corrcoef(df['true_rho'], df[f'pred_rho_{model_type}'])[0, 1] ** 2
 
 
-        results[model_type] = {
-            'mse_alpha': float(np.mean((df['true_alpha'] - predictions[:, 0]) ** 2)),
-            'mse_rho': float(np.mean((df['true_rho'] - predictions[:, 1]) ** 2)),
-            'r2_alpha': r2_alpha,
-            'r2_rho': r2_rho
-        }
+    results[model_type] = {
+        'mse_alpha': float(np.mean((df['true_alpha'] - predictions[:, 0]) ** 2)),
+        'mse_rho': float(np.mean((df['true_rho'] - predictions[:, 1]) ** 2)),
+        'r2_alpha': r2_alpha,
+        'r2_rho': r2_rho
+    }
 
 
     return df, results

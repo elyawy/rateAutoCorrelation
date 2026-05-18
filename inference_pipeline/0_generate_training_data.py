@@ -21,16 +21,18 @@ from utils.simulation import SimulationParams, generate_random_tree, setup_sim, 
 # TRAINING DATA CONFIGURATION
 # ==========================================
 TRAINING_SEED = 1337
-N_TRAINING_TREES = 500
-N_TRAINING_SIMS_PER_TREE = 250
+N_TRAINING_TREES = 1000
+N_TRAINING_SIMS_PER_TREE = 100
 
 SIM_PARAMS = SimulationParams(
-    min_taxa=5,
+    min_taxa=20,
     max_taxa=200,
     min_seq_length=50,
-    max_seq_length=1000,
+    max_seq_length=500,
 )
 
+SCALE_MIN = 0.01
+SCALE_MAX = 0.2
 
 def process_single_tree(tree_idx, training_data_dir):
     """
@@ -46,7 +48,7 @@ def process_single_tree(tree_idx, training_data_dir):
     """
     random.seed(TRAINING_SEED + tree_idx)
     n_taxa = random.randint(SIM_PARAMS.min_taxa, SIM_PARAMS.max_taxa)
-    random_scale = 10 ** random.uniform(math.log10(config.SCALE_MIN), math.log10(config.SCALE_MAX))
+    random_scale = 10 ** random.uniform(math.log10(SCALE_MIN), math.log10(SCALE_MAX))
 
     tree_seed = TRAINING_SEED + tree_idx * 10000
     tree = generate_random_tree(n_taxa, random_scale, tree_seed)

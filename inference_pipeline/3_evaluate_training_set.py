@@ -50,7 +50,7 @@ def main():
     X_train, y_train, _ = load_training_data()
 
     # load best neural net model
-    model_file = models_dir / "neural_net_model.pkl"
+    model_file = models_dir / "lightgbm_model.pkl"
     model = joblib.load(model_file)
     print(f"Loaded model from: {model_file}")
 
