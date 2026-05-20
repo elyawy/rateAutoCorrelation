@@ -285,6 +285,10 @@ def calculate_all_features(sequences) -> dict:
     Add or remove feature groups here — callers never need to change.
     """
     alignment = np.array([list(seq) for seq in sequences])  # built once
+    #number of taxa:
+    n_taxa = len(sequences)
     features = calculate_msa_entropy_stats(alignment)
     features.update(calculate_indel_features(sequences))
+    # add number of taxa, log-transformed to reduce outlier impact (e.g. very large trees)
+    features.update({'n_taxa': np.log(n_taxa)})
     return features
