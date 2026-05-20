@@ -4,12 +4,16 @@ This script uses existing training data (features + true parameters) to train a 
 1. Trains a neural network using sbi (NPE) to learn the posterior distribution of alpha and rho given the features.
 2. present the results with the script visualize_posteriors.py, which will show how well the model can recover the true parameters on a test set and visualize the learned posterior distributions.
 """
+from copyreg import pickle
 from dataclasses import dataclass
 import math
 import random
+import pickle
+import pathlib
 import torch
 from sbi.utils import BoxUniform
 from sbi.inference import NPE
+from sbi.inference import simulate_for_sbi
 
 from ete3 import Tree
 import numpy as np
@@ -120,6 +124,7 @@ def simulate(theta: torch.Tensor):
     # return tensor of features for this simulation
     return torch.stack(features_list)
 
+#%%
 def main():
     # Example of how to use the prior and simulator together
 
@@ -130,11 +135,13 @@ def main():
     # print theta and features for this example simulation
     print("Sampled parameters (alpha, rho, tree_scale):", theta_0)
     # print("Calculated features:", feature_0)
-    num_simulations = 1000
-    thetas = prior_dist.sample((num_simulations,))  # Sample 1000 sets of parameters
-    features = simulate(thetas)  # Simulate MSAs and calculate features for each
+    num_simulations = 10000
+    thetas, features = simulate_for_sbi(simulate, prior_dist, 
+                                        num_simulations=num_simulations,
+                                        num_workers=7)  # Simulate MSAs and calculate features for each
 
     inference = NPE(prior=prior_dist)
+
 
     inference.append_simulations(thetas, features).train()
     
@@ -147,7 +154,13 @@ def main():
     # mean and std of samples
     print("Posterior samples mean:", samples.mean(dim=0))
     print("Posterior samples std:", samples.std(dim=0))
+#%%
 
+    with open("sbi_models/my_posterior.pkl", "wb") as handle:
+        pickle.dump(posterior, handle)
+
+    with open("sbi_models/my_inference.pkl", "wb") as handle:
+        pickle.dump(inference, handle)
 
 
 if __name__ == "__main__":

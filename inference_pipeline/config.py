@@ -45,7 +45,7 @@ FEATURE_COLUMNS = [
     
     # Histogram bins (10 bins)
     'entropy_bin_0', 'entropy_bin_1', 'entropy_bin_2', 'entropy_bin_3', 'entropy_bin_4',
-    # 'entropy_bin_5', 'entropy_bin_6', 'entropy_bin_7', 'entropy_bin_8', 'entropy_bin_9',
+    'entropy_bin_5', 'entropy_bin_6', 'entropy_bin_7', 'entropy_bin_8', 'entropy_bin_9',
     
     # Multi-lag autocorrelations (lags 2-10, lag1 already exists above)
     'lag2_autocorr', 'lag3_autocorr', 'lag4_autocorr', 'lag5_autocorr',
@@ -56,7 +56,7 @@ FEATURE_COLUMNS = [
     'low_run_mean',  'low_run_var',  'low_run_max',  'low_run_count',
 
     # Consensus sequence features
-    # 'cons_lag1_phi', 'cons_lag2_phi', 'cons_lag5_phi', 'cons_lag10_phi', 'cons_lag20_phi',
+    'cons_lag1_phi', 'cons_lag2_phi', 'cons_lag5_phi', 'cons_lag10_phi', 'cons_lag20_phi',
     'cons_decay_A', 'cons_decay_rho',
 
     # Indel-related features (from msastats)
