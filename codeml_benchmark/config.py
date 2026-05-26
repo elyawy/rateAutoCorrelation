@@ -21,11 +21,11 @@ RESULTS_DIR = "results"
 # SIMULATION PARAMETERS
 # ==========================================
 NUM_SIMULATIONS_PER_TREE = 400  # How many MSAs per tree
-SEQ_LENGTH = 5000              # Length of each sequence
+SEQ_LENGTH = 500              # Length of each sequence
 
 # Parameter ranges for random sampling
-ALPHA_RANGE = (0.1, 2.0)       # Min and Max Alpha
-RHO_RANGE = (0.01, 0.95)       # Min and Max Rho
+ALPHA_RANGE = (0.01, 2.0)       # Min and Max Alpha
+RHO_RANGE = (0.01, 0.99)       # Min and Max Rho
 
 # ==========================================
 # BASEML PARAMETERS
