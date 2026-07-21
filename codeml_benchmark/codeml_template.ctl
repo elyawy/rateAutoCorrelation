@@ -13,8 +13,8 @@
    fix_kappa = 1
        kappa = 1
 
-   fix_alpha = 0
-       alpha = 0.5
+   fix_alpha = 1
+       alpha = ALPHA_PLACEHOLDER
        ncatG = 4
 
      fix_rho = 0

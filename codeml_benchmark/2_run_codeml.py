@@ -22,7 +22,16 @@ import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
-def create_control_file(template_path, run_dir, seq_file, tree_file):
+def parse_true_alpha(sim_name):
+    """Extract true alpha from sim directory name e.g. sim_0035_a0.782_r0.882 -> '0.782'"""
+    import re
+    match = re.search(r'_a([0-9.]+)_r', sim_name)
+    if not match:
+        raise ValueError(f"Could not parse alpha from sim name: {sim_name}")
+    return match.group(1)
+
+
+def create_control_file(template_path, run_dir, seq_file, tree_file, true_alpha):
     """Create a control file with proper paths."""
     with open(template_path, 'r') as f:
         template = f.read()
@@ -30,6 +39,7 @@ def create_control_file(template_path, run_dir, seq_file, tree_file):
     control_content = template.replace('SEQFILE_PLACEHOLDER', str(seq_file))
     control_content = control_content.replace('TREEFILE_PLACEHOLDER', str(tree_file))
     control_content = control_content.replace('WAGFILE_PLACEHOLDER', str(config.WAGDAT_FILE))
+    control_content = control_content.replace('ALPHA_PLACEHOLDER', str(true_alpha))
 
     control_path = run_dir / 'control.ctl'
     with open(control_path, 'w') as f:
@@ -48,7 +58,7 @@ def run_codeml(control_file, run_dir):
             cwd=run_dir,
             capture_output=True,
             text=True,
-            timeout=1800
+            timeout=7200
         )
         elapsed_time = time.time() - start_time
         return result.returncode == 0, elapsed_time
@@ -82,11 +92,13 @@ def process_single_sim(sim_dir, codeml_runs_dir, template_path):
     shutil.copy(alignment_file, run_dir / "alignment.phy")
 
     # Create control file
+    true_alpha = parse_true_alpha(sim_name)
     control_file = create_control_file(
         template_path,
         run_dir,
         "alignment.phy",          # relative path within run_dir
-        tree_file.resolve()       # absolute path to tree
+        tree_file.resolve(),      # absolute path to tree
+        true_alpha
     )
 
     _, elapsed_time = run_codeml(control_file, run_dir)

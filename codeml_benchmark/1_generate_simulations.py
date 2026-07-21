@@ -38,7 +38,7 @@ def generate_random_tree(n_taxa: int, scale: float) -> Tree:
         node.dist = np.random.exponential(scale=scale)
     
     for leaf in tree.get_leaves():
-        leaf.name = leaf.name[-9:]
+        leaf.name = leaf.name[4:]
 
     return tree
 
