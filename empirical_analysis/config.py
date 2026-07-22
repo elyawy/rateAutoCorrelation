@@ -42,3 +42,6 @@ AMINO_ACIDS = _inference_config.AMINO_ACIDS
 # Number of parallel workers for processing
 # Set to None to use all available cores
 N_WORKERS = None
+
+RAXML_EXECUTABLE = "/home/pupkolab/Apps/raxml-ng"
+RAXML_MODEL = "WAG+G4"

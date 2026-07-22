@@ -13,5 +13,5 @@ RESULTS_DIR = "results"
 # ==========================================
 # RAXML-NG PARAMETERS
 # ==========================================
-RAXML_EXECUTABLE = "/home/elyalab/Apps/raxml-ng"
+RAXML_EXECUTABLE = "/home/pupkolab/Apps/raxml-ng"
 RAXML_MODEL = "WAG+G4"
