@@ -21,7 +21,7 @@ import numpy as np
 from io import StringIO
 from Bio import SeqIO
 
-import config
+import common.config as config
 
 # ==========================================
 # CONSTANTS

@@ -18,7 +18,7 @@ from Bio import SeqIO
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-import config
+import common.config as config
 
 # Import feature calculator from inference pipeline
 import sys

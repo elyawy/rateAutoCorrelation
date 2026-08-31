@@ -7,7 +7,7 @@ Creates separate histograms for alpha and rho from OrthoMaM predictions.
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import config
+import common.config as config
 
 
 def plot_distribution(values, param_name, output_file, bins=50):

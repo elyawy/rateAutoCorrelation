@@ -5,7 +5,6 @@ trees_old
 inference_pipeline/results
 inference_pipeline/features/features.csv
 lightgbm_model.pkl
-results
 .venv
 training_data
 raxml_runs
