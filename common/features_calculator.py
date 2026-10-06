@@ -419,6 +419,22 @@ def calculate_cnn_input(sequences, alphabet_size=None) -> torch.Tensor:
         dtype=torch.float32
     )
 
+def calculate_scalar_features(sequences, alphabet_size=None) -> torch.Tensor:
+    """Alignment-level scalars: log mean pairwise divergence (gap-aware), log number of sequences."""
+    alignment = np.array([list(seq) for seq in sequences], dtype='S1')
+    encoded_msa = encode_msa_to_integers(alignment, alphabet_size=alphabet_size)
+
+    counts = np.array([np.sum(encoded_msa == i, axis=0) for i in range(alphabet_size)])  # (alphabet, sites)
+    valid = counts.sum(axis=0)  # sequences with a residue in each column
+    total_pairs = (valid * (valid - 1) / 2).sum()
+    agreeing_pairs = (counts * (counts - 1) / 2).sum()
+    divergence = (total_pairs - agreeing_pairs) / total_pairs if total_pairs > 0 else 0.0
+
+    return torch.tensor(
+        [np.log(max(divergence, 1e-4)), np.log(len(sequences))],
+        dtype=torch.float32,
+    )
+
 def get_feature_names():
     # Get feature names by running calculate_all_features on a dummy input
     dummy_sequences = ['ACGT', 'ACGT', 'ACGT']  # Minimal MSA with 3 identical sequences

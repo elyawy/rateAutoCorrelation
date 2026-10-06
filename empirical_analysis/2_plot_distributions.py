@@ -1,7 +1,5 @@
 """
-Step 2: Plot distributions of inferred alpha and rho parameters.
-
-Creates separate histograms for alpha and rho from OrthoMaM predictions.
+Step 2: Plot the distribution of inferred rho, and rho against alignment length.
 """
 
 import pandas as pd
@@ -66,6 +64,24 @@ def plot_distribution(values, param_name, output_file, bins=50):
     print(f"  Saved: {output_file}")
 
 
+def plot_rho_vs_length(df, output_file):
+    """Scatter of predicted rho against alignment length, to check estimates stabilize for long genes."""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.scatter(df['alignment_length'], df['pred_rho'], s=6, alpha=0.3, color='steelblue')
+    ax.set_xscale('log')
+    for window in (100, 250, 500):
+        ax.axvline(window, color='gray', linestyle='--', linewidth=0.8)
+    ax.set_xlabel('Alignment length (sites)', fontsize=14)
+    ax.set_ylabel('Predicted rho', fontsize=14)
+    ax.set_title('Predicted rho vs alignment length (OrthoMaM)', fontsize=16, fontweight='bold')
+    ax.grid(True, alpha=0.3, linestyle='--')
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.close()
+
+    print(f"  Saved: {output_file}")
+
+
 def main():
     """Main plotting function."""
     print("=" * 60)
@@ -89,16 +105,6 @@ def main():
     # Create plots directory
     config.PLOTS_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Plot alpha distribution
-    print("Creating Alpha distribution plot...")
-    alpha_plot = config.PLOTS_DIR / "alpha_distribution.png"
-    plot_distribution(
-        df['pred_alpha'].values, 
-        'Alpha', 
-        alpha_plot,
-        bins=50
-    )
-    
     # Plot rho distribution
     print("Creating Rho distribution plot...")
     rho_plot = config.PLOTS_DIR / "rho_distribution.png"
@@ -109,6 +115,10 @@ def main():
         bins=50
     )
     
+    # Plot rho vs alignment length
+    print("Creating Rho vs length plot...")
+    plot_rho_vs_length(df, config.PLOTS_DIR / "rho_vs_length.png")
+    
     print()
     print("=" * 60)
     print("PLOTTING COMPLETE")
@@ -116,10 +126,10 @@ def main():
     print(f"Plots saved to: {config.PLOTS_DIR}/")
     print()
     print("Summary statistics:")
-    print("\nAlpha:")
-    print(df['pred_alpha'].describe())
     print("\nRho:")
     print(df['pred_rho'].describe())
+    print("\nWindow used:")
+    print(df['window_used'].value_counts())
 
 
 if __name__ == "__main__":

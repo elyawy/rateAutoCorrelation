@@ -1,29 +1,34 @@
 """
-Step 1: Process OrthoMaM dataset and infer alpha/rho parameters.
+Step 1: Process OrthoMaM dataset and infer rho.
 
-For each FASTA file in the OrthoMaM archive:
-  - Extract features using the trained feature calculator
-  - Load trained neural network model
-  - Predict alpha and rho parameters
+For each (nucleotide) FASTA file in the OrthoMaM archive:
+  - Pick the largest window (500/250/100) that fits the alignment
+  - Cut non-overlapping chunks, run the matching CNN regressor on each
+  - Average the chunk predictions into one rho per gene
   - Save results to CSV with metadata
 """
 
 import pathlib
 import zipfile
 import pandas as pd
-import joblib
+import torch
 import numpy as np
 from io import StringIO
 from Bio import SeqIO
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import sys
+REPO_DIR = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_DIR / "training"))
+sys.path.insert(0, str(REPO_DIR / "common"))
 
 import common.config as config
 
-# Import feature calculator from inference pipeline
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "inference_pipeline"))
-from features_calculator import calculate_msa_entropy_stats, read_fasta_sequences
+# common/ goes first so its features_calculator wins over the one in this folder
+from features_calculator import calculate_cnn_input, calculate_scalar_features
+from train_rho_regressor import RhoRegressor
+
+WINDOWS = [500, 250, 100]  # tried in this order, biggest that fits
 
 
 def extract_fasta_from_zip(zip_path):
@@ -120,13 +125,54 @@ def calculate_alignment_metadata(sequences):
     }
 
 
-def process_single_zip(zip_path, model):
+def load_models():
+    """Load one trained regressor per window size from the repo root."""
+    models = {}
+    for window in WINDOWS:
+        model = RhoRegressor()
+        model.load_state_dict(torch.load(REPO_DIR / f"rho_regressor_w{window}.pt", map_location="cpu"))
+        model.eval()
+        models[window] = model
+    return models
+
+
+def is_dna(sequences, n_check=20):
+    """True if the residues of the first sequences are mostly A/C/G/T."""
+    chars = "".join(sequences[:n_check]).upper().replace("-", "")
+    return len(chars) > 0 and sum(chars.count(b) for b in "ACGT") / len(chars) >= 0.9
+
+
+def predict_rho(sequences, models):
+    """Chunk the alignment into non-overlapping windows and average the predictions."""
+    length = len(sequences[0])
+    window = next((w for w in WINDOWS if length >= w), None)
+    if window is None:
+        return None
+
+    chunks, scalars = [], []
+    for start in range(0, length - window + 1, window):
+        chunk = [seq[start:start + window] for seq in sequences]
+        chunks.append(calculate_cnn_input(chunk, alphabet_size=4))
+        scalars.append(calculate_scalar_features(chunk, alphabet_size=4))
+
+    with torch.no_grad():
+        preds = models[window](torch.stack(chunks), torch.stack(scalars)).numpy()
+
+    return {
+        'pred_rho': float(preds.mean()),
+        'rho_std': float(preds.std()),
+        'window_used': window,
+        'n_chunks': len(chunks),
+    }
+
+
+def process_single_zip(zip_path, models):
     """
-    Process a single zip file: extract, calculate features, predict parameters.
+    Process a single zip file: extract, chunk, predict rho.
     
     Args:
         zip_path: Path to .fasta.zip file
-        model: Trained neural network model
+        models: dict of trained regressors, keyed by window size
         
     Returns:
         dict: Results dictionary or None if error
@@ -148,27 +194,17 @@ def process_single_zip(zip_path, model):
         # Calculate metadata
         metadata = calculate_alignment_metadata(sequences)
         
-        # Calculate features
-        features = calculate_msa_entropy_stats(sequences)
+        if not is_dna(sequences):
+            print(f"  WARNING: {filename} does not look like DNA, skipping")
+            return None
         
-        # Extract feature vector in correct order
-        feature_vector = np.array([features[col] for col in config.FEATURE_COLUMNS])
-        feature_vector = feature_vector.reshape(1, -1)  # Shape: (1, n_features)
+        # Predict rho
+        prediction = predict_rho(sequences, models)
+        if prediction is None:
+            print(f"  WARNING: {filename} shorter than {min(WINDOWS)} sites, skipping")
+            return None
         
-        # Predict alpha and rho
-        predictions = model.predict(feature_vector)
-        pred_alpha = float(predictions[0, 0])
-        pred_rho = float(predictions[0, 1])
-        
-        # Combine results
-        result = {
-            'filename': filename,
-            **metadata,
-            'pred_alpha': pred_alpha,
-            'pred_rho': pred_rho
-        }
-        
-        return result
+        return {'filename': filename, **metadata, **prediction}
     
     except Exception as e:
         print(f"  ERROR processing {zip_path.name}: {e}")
@@ -181,7 +217,6 @@ def main():
     print("ORTHOMAM EMPIRICAL ANALYSIS")
     print("=" * 60)
     print(f"OrthoMaM directory: {config.ORTHOMAM_DIR}")
-    print(f"Model path: {config.MODEL_PATH}")
     print()
     
     # Check paths exist
@@ -189,14 +224,10 @@ def main():
         print(f"ERROR: OrthoMaM directory not found: {config.ORTHOMAM_DIR}")
         return
     
-    if not config.MODEL_PATH.exists():
-        print(f"ERROR: Model file not found: {config.MODEL_PATH}")
-        return
-    
-    # Load trained model
-    print("Loading trained model...")
-    model = joblib.load(config.MODEL_PATH)
-    print("  Model loaded successfully")
+    # Load trained models
+    print("Loading trained models...")
+    models = load_models()
+    print("  Models loaded successfully")
     print()
     
     # Find all zip files
@@ -229,7 +260,7 @@ def main():
         if idx % 10 == 0 or idx == 1:
             print(f"Processing {idx}/{len(zip_files)}: {zip_path.name}")
         
-        result = process_single_zip(zip_path, model)
+        result = process_single_zip(zip_path, models)
         
         if result is not None:
             results.append(result)
@@ -257,8 +288,8 @@ def main():
     print(f"Results saved to: {output_file}")
     print()
     print("Summary statistics:")
-    print(f"  Alpha - Mean: {df['pred_alpha'].mean():.3f}, Std: {df['pred_alpha'].std():.3f}")
     print(f"  Rho   - Mean: {df['pred_rho'].mean():.3f}, Std: {df['pred_rho'].std():.3f}")
+    print(f"  Window used: {df['window_used'].value_counts().to_dict()}")
     print()
     print("Next step: Run python 2_plot_distributions.py")
 

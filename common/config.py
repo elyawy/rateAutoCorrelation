@@ -6,7 +6,7 @@ import pathlib
 # ==========================================
 # DATA PATHS
 # ==========================================
-ORTHOMAM_DIR = pathlib.Path("/home/elyalab/Data/orthomam/msas")
+ORTHOMAM_DIR = pathlib.Path("/home/pupkolab/temp/autocorr/orthomam_nt")
 RESULTS_DIR = pathlib.Path("results")
 PLOTS_DIR = RESULTS_DIR / "plots"
 
@@ -24,17 +24,17 @@ import sys
 import importlib.util
 
 # Load inference_pipeline config module explicitly
-_inference_config_path = pathlib.Path(__file__).parent.parent / "inference_pipeline" / "config.py"
-_spec = importlib.util.spec_from_file_location("inference_config", _inference_config_path)
-_inference_config = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_inference_config)
+# _inference_config_path = pathlib.Path(__file__).parent.parent / "inference_pipeline" / "config.py"
+# _spec = importlib.util.spec_from_file_location("inference_config", _inference_config_path)
+# _inference_config = importlib.util.module_from_spec(_spec)
+# _spec.loader.exec_module(_inference_config)
 
 # Import the feature columns
-FEATURE_COLUMNS = _inference_config.FEATURE_COLUMNS
+# FEATURE_COLUMNS = _inference_config.FEATURE_COLUMNS
 # ==========================================
 # AMINO ACID ALPHABET
 # ==========================================
-AMINO_ACIDS = _inference_config.AMINO_ACIDS
+# AMINO_ACIDS = _inference_config.AMINO_ACIDS
 
 # ==========================================
 # PROCESSING PARAMETERS

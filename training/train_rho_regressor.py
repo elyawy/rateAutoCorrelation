@@ -30,12 +30,14 @@ from torch import nn
 sys.path.append(str(Path(__file__).resolve().parent.parent / "common"))
 
 import prior
-from features_calculator import calculate_cnn_input
+from features_calculator import calculate_cnn_input, calculate_scalar_features
 
-MANIFEST_PATH = Path("/home/elyalab/Dev/failed_syncs/SailfishBenchmark/simulation_manifest.json")
+MANIFEST_PATH = Path("/home/pupkolab/Dev/SailfishBenchmark/simulation_manifest.json")
 WINDOW_SIZES = [100, 250, 500]
 N_TRAIN = 5000
 N_TEST = 500
+TEST_GENE_FRACTION = 0.1  # genes held out for the test set only
+SPLIT_SEED = 0
 N_WORKERS = 4
 GAMMA_CATEGORIES = 8
  
@@ -79,8 +81,8 @@ def build_replacement_model(gtr_model: dict, rho: float) -> ReplacementModelSpec
     )
  
  
-def simulate_one(gene_entry: dict, rho: float, window_size: int) -> torch.Tensor:
-    """Simulate one MSA for a gene at a given rho and window size, return CNN input."""
+def simulate_one(gene_entry: dict, rho: float, window_size: int):
+    """Simulate one MSA for a gene at a given rho and window size, return (CNN input, scalar features)."""
     replacement_model = build_replacement_model(gene_entry["gtr_model"], rho)
  
     simulation_protocol = SimProtocol(
@@ -102,7 +104,7 @@ def simulate_one(gene_entry: dict, rho: float, window_size: int) -> torch.Tensor
             row += "-" * (window_size - len(row))
         sequences[i] = row
  
-    return calculate_cnn_input(sequences, alphabet_size=4)
+    return calculate_cnn_input(sequences, alphabet_size=4), calculate_scalar_features(sequences, alphabet_size=4)
  
  
 def generate_dataset(gene_entries: list, n_samples: int, window_size: int):
@@ -113,6 +115,7 @@ def generate_dataset(gene_entries: list, n_samples: int, window_size: int):
     ]
  
     features_list = [None] * n_samples
+    scalars_list = [None] * n_samples
     rhos = [None] * n_samples
  
     with ProcessPoolExecutor(max_workers=N_WORKERS) as executor:
@@ -123,19 +126,19 @@ def generate_dataset(gene_entries: list, n_samples: int, window_size: int):
         completed = 0
         for future in as_completed(future_to_idx):
             idx = future_to_idx[future]
-            features_list[idx] = future.result()
+            features_list[idx], scalars_list[idx] = future.result()
             rhos[idx] = tasks[idx][1]
             completed += 1
             if completed % 100 == 0:
                 print(f"  simulated {completed}/{n_samples}")
  
-    return torch.stack(features_list), torch.tensor(rhos, dtype=torch.float32)
+    return torch.stack(features_list), torch.stack(scalars_list), torch.tensor(rhos, dtype=torch.float32)
  
  
 class RhoRegressor(nn.Module):
     """CNN embedding of MSA summary stats -> MLP head -> scalar rho estimate."""
  
-    def __init__(self):
+    def __init__(self, n_scalars=2):
         super().__init__()
         self.cnn = nn.Sequential(
             nn.Conv1d(2, 32, kernel_size=5, padding=2), nn.ReLU(),
@@ -143,19 +146,20 @@ class RhoRegressor(nn.Module):
             nn.Conv1d(64, 128, kernel_size=5, padding=2), nn.ReLU(),
         )
         self.head = nn.Sequential(
-            nn.Linear(128, 64), nn.ReLU(),
+            nn.Linear(128 + n_scalars, 64), nn.ReLU(),
             nn.Linear(64, 1),
         )
  
-    def forward(self, x):
+    def forward(self, x, scalars):
         embedding = self.cnn(x).mean(dim=-1)
-        return self.head(embedding).squeeze(-1)
+        return self.head(torch.cat([embedding, scalars], dim=1)).squeeze(-1)
  
  
-def train_model(train_features, train_rhos, n_epochs=100, lr=1e-3, batch_size=64):
+def train_model(train_features, train_scalars, train_rhos, test_features, test_scalars, test_rhos, n_epochs=100, lr=1e-3, batch_size=64):
     model = RhoRegressor()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     loss_fn = nn.MSELoss()
+    train_losses, test_losses = [], []
  
     n_samples = train_features.shape[0]
     for epoch in range(n_epochs):
@@ -164,25 +168,31 @@ def train_model(train_features, train_rhos, n_epochs=100, lr=1e-3, batch_size=64
         for start in range(0, n_samples, batch_size):
             idx = permutation[start:start + batch_size]
             batch_features = train_features[idx]
+            batch_scalars = train_scalars[idx]
             batch_rhos = train_rhos[idx]
  
             optimizer.zero_grad()
-            preds = model(batch_features)
+            preds = model(batch_features, batch_scalars)
             loss = loss_fn(preds, batch_rhos)
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item() * len(idx)
  
+        with torch.no_grad():
+            test_loss = loss_fn(model(test_features, test_scalars), test_rhos).item()
+        train_losses.append(epoch_loss / n_samples)
+        test_losses.append(test_loss)
+ 
         if (epoch + 1) % 10 == 0:
-            print(f"  epoch {epoch + 1}/{n_epochs} - loss: {epoch_loss / n_samples:.5f}")
+            print(f"  epoch {epoch + 1}/{n_epochs} - train loss: {train_losses[-1]:.5f} - test loss: {test_loss:.5f}")
  
-    return model
+    return model, train_losses, test_losses
  
  
-def evaluate_model(model, test_features, test_rhos):
+def evaluate_model(model, test_features, test_scalars, test_rhos):
     model.eval()
     with torch.no_grad():
-        preds = model(test_features)
+        preds = model(test_features, test_scalars)
     rmse = torch.sqrt(torch.mean((preds - test_rhos) ** 2)).item()
     corr = np.corrcoef(preds.numpy(), test_rhos.numpy())[0, 1]
     return rmse, corr, preds
@@ -191,13 +201,20 @@ def evaluate_model(model, test_features, test_rhos):
 def main():
     gene_entries = list(json.loads(MANIFEST_PATH.read_text()).values())
  
+    # split genes once (same split for every window) so test genes are never seen in training
+    random.Random(SPLIT_SEED).shuffle(gene_entries)
+    n_test_genes = int(len(gene_entries) * TEST_GENE_FRACTION)
+    test_genes = gene_entries[:n_test_genes]
+    train_genes = gene_entries[n_test_genes:]
+    print(f"genes: {len(train_genes)} train, {len(test_genes)} test")
+ 
     for window_size in WINDOW_SIZES:
         print(f"\n=== window_size={window_size} ===")
-        train_features, train_rhos = generate_dataset(gene_entries, N_TRAIN, window_size)
-        test_features, test_rhos = generate_dataset(gene_entries, N_TEST, window_size)
+        train_features, train_scalars, train_rhos = generate_dataset(train_genes, N_TRAIN, window_size)
+        test_features, test_scalars, test_rhos = generate_dataset(test_genes, N_TEST, window_size)
  
-        model = train_model(train_features, train_rhos)
-        rmse, corr, preds = evaluate_model(model, test_features, test_rhos)
+        model, train_losses, test_losses = train_model(train_features, train_scalars, train_rhos, test_features, test_scalars, test_rhos)
+        rmse, corr, preds = evaluate_model(model, test_features, test_scalars, test_rhos)
         print(f"window={window_size}: RMSE={rmse:.4f}, corr={corr:.4f}")
  
         torch.save(model.state_dict(), f"rho_regressor_w{window_size}.pt")
@@ -205,9 +222,10 @@ def main():
             f"test_predictions_w{window_size}.npz",
             true_rho=test_rhos.numpy(),
             pred_rho=preds.numpy(),
+            train_loss=np.array(train_losses),
+            test_loss=np.array(test_losses),
         )
  
  
 if __name__ == "__main__":
     main()
- 
