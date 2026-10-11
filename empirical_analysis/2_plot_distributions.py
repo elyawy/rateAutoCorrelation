@@ -2,9 +2,18 @@
 Step 2: Plot the distribution of inferred rho, and rho against alignment length.
 """
 
+import pathlib
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import common.config as config
+import sys
+REPO_DIR = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_DIR))  # so `common` imports without setting PYTHONPATH
+sys.path.insert(0, str(REPO_DIR / "training"))
+sys.path.insert(0, str(REPO_DIR / "common"))
+
 import common.config as config
 
 
@@ -89,7 +98,7 @@ def main():
     print("=" * 60)
     
     # Load predictions
-    predictions_file = config.RESULTS_DIR / "orthomam_predictions.csv"
+    predictions_file = config.RESULTS_DIR / "orthomam_predictions_amino.csv"
     
     if not predictions_file.exists():
         print(f"ERROR: Predictions file not found: {predictions_file}")

@@ -20,13 +20,13 @@ from pathlib import Path
 
 from Bio import Phylo, SeqIO
 
-AA_DIR = Path("/home/pupkolab/temp/orthomam_AA")
-MANIFEST_PATH = Path("/home/pupkolab/Dev/SailfishBenchmark/simulation_manifest.json")
-RAXML_PATH = Path("/home/pupkolab/Apps/raxml-ng")  # the executable, or the folder holding it
+AA_DIR = Path("/home/elyalab/temp/orthomam_AA") # contains *.fasta.zip files
+MANIFEST_PATH = Path("/home/elyalab/Dev/failed_syncs/SailfishBenchmark/simulation_manifest.json")
+RAXML_PATH = Path("/home/elyalab/Apps/raxml-ng")  # the executable, or the folder holding it
 OUTPUT_MANIFEST = Path("protein_manifest.json")
 FAILURE_LOG = Path("protein_manifest_failures.csv")
 MODEL = "LG+G8"
-N_WORKERS = 7
+N_WORKERS = 10
 SEED = 0
 SAVE_EVERY = 500  # genes between saves of the output manifest
 MIN_TAXA = 4

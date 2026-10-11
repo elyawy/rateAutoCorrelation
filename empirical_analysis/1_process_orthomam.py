@@ -1,7 +1,7 @@
 """
-Step 1: Process OrthoMaM dataset and infer rho.
+Step 1 (protein version): Process OrthoMaM amino acid alignments and infer rho.
 
-For each (nucleotide) FASTA file in the OrthoMaM archive:
+For each amino acid FASTA file in the OrthoMaM archive:
   - Pick the largest window (500/250/100) that fits the alignment
   - Cut non-overlapping chunks, run the matching CNN regressor on each
   - Average the chunk predictions into one rho per gene
@@ -17,18 +17,23 @@ from io import StringIO
 from Bio import SeqIO
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
+
 import sys
 REPO_DIR = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_DIR / "training"))
-sys.path.insert(0, str(REPO_DIR / "common"))
-
+sys.path.insert(0, str(REPO_DIR))  # so `common` imports without setting PYTHONPATH
 import common.config as config
 
 # common/ goes first so its features_calculator wins over the one in this folder
+sys.path.insert(0, str(REPO_DIR / "training"))
+sys.path.insert(0, str(REPO_DIR / "common"))
 from features_calculator import calculate_cnn_input, calculate_scalar_features
-from train_rho_regressor import RhoRegressor
+from train_rho_regressor_amino import RhoRegressor
 
-WINDOWS = [500, 250, 100]  # tried in this order, biggest that fits
+AA_DIR = pathlib.Path("/home/elyalab/temp/orthomam_AA")
+WEIGHTS_DIR = REPO_DIR  # folder holding rho_regressor_amino_w*.pt
+OUTPUT_NAME = "orthomam_predictions_amino.csv"
+ALPHABET_SIZE = 20
+WINDOWS = [250]  # in amino acid sites, tried in this order, biggest that fits
 
 
 def extract_fasta_from_zip(zip_path):
@@ -130,16 +135,16 @@ def load_models():
     models = {}
     for window in WINDOWS:
         model = RhoRegressor()
-        model.load_state_dict(torch.load(REPO_DIR / f"rho_regressor_w{window}.pt", map_location="cpu"))
+        model.load_state_dict(torch.load(WEIGHTS_DIR / f"rho_regressor_amino_alphaprior_w{window}.pt", map_location="cpu"))
         model.eval()
         models[window] = model
     return models
 
 
-def is_dna(sequences, n_check=20):
-    """True if the residues of the first sequences are mostly A/C/G/T."""
+def looks_like_dna(sequences, n_check=20):
+    """True if the residues of the first sequences are mostly A/C/G/T (so not protein)."""
     chars = "".join(sequences[:n_check]).upper().replace("-", "")
-    return len(chars) > 0 and sum(chars.count(b) for b in "ACGT") / len(chars) >= 0.9
+    return len(chars) == 0 or sum(chars.count(b) for b in "ACGT") / len(chars) >= 0.9
 
 
 def predict_rho(sequences, models):
@@ -152,8 +157,8 @@ def predict_rho(sequences, models):
     chunks, scalars = [], []
     for start in range(0, length - window + 1, window):
         chunk = [seq[start:start + window] for seq in sequences]
-        chunks.append(calculate_cnn_input(chunk, alphabet_size=4))
-        scalars.append(calculate_scalar_features(chunk, alphabet_size=4))
+        chunks.append(calculate_cnn_input(chunk, alphabet_size=ALPHABET_SIZE))
+        scalars.append(calculate_scalar_features(chunk, alphabet_size=ALPHABET_SIZE))
 
     with torch.no_grad():
         preds = models[window](torch.stack(chunks), torch.stack(scalars)).numpy()
@@ -194,8 +199,8 @@ def process_single_zip(zip_path, models):
         # Calculate metadata
         metadata = calculate_alignment_metadata(sequences)
         
-        if not is_dna(sequences):
-            print(f"  WARNING: {filename} does not look like DNA, skipping")
+        if looks_like_dna(sequences):
+            print(f"  WARNING: {filename} looks like DNA, not protein, skipping")
             return None
         
         # Predict rho
@@ -216,12 +221,12 @@ def main():
     print("=" * 60)
     print("ORTHOMAM EMPIRICAL ANALYSIS")
     print("=" * 60)
-    print(f"OrthoMaM directory: {config.ORTHOMAM_DIR}")
+    print(f"OrthoMaM directory: {AA_DIR}")
     print()
     
     # Check paths exist
-    if not config.ORTHOMAM_DIR.exists():
-        print(f"ERROR: OrthoMaM directory not found: {config.ORTHOMAM_DIR}")
+    if not AA_DIR.exists():
+        print(f"ERROR: OrthoMaM directory not found: {AA_DIR}")
         return
     
     # Load trained models
@@ -231,10 +236,10 @@ def main():
     print()
     
     # Find all zip files
-    zip_files = sorted(config.ORTHOMAM_DIR.glob("*.fasta.zip"))
+    zip_files = sorted(AA_DIR.glob("*.fasta.zip"))
     
     if not zip_files:
-        print(f"ERROR: No .fasta.zip files found in {config.ORTHOMAM_DIR}")
+        print(f"ERROR: No .fasta.zip files found in {AA_DIR}")
         return
     
     print(f"Found {len(zip_files)} zip files to process")
@@ -278,7 +283,7 @@ def main():
     
     # Save to CSV
     df = pd.DataFrame(results)
-    output_file = config.RESULTS_DIR / "orthomam_predictions.csv"
+    output_file = config.RESULTS_DIR / OUTPUT_NAME
     df.to_csv(output_file, index=False)
     
     print()
