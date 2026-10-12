@@ -36,9 +36,10 @@ import prior
 from features_calculator import calculate_cnn_input, calculate_scalar_features
 
 MANIFEST_PATH = Path("protein_manifest.json")
-WINDOW_SIZES = [250]
+WINDOW_SIZES = [1000]
+TEST_SIZES = [100, 250, 500, 1000]  # lengths to evaluate the trained model on
 N_TRAIN = 20000
-N_TEST = 500
+N_TEST = 1000
 TEST_GENE_FRACTION = 0.1  # genes held out for the test set only
 SPLIT_SEED = 0
 N_WORKERS = 7
@@ -257,7 +258,19 @@ def main():
             train_loss=np.array(train_losses),
             test_loss=np.array(test_losses),
         )
- 
- 
+
+        # length-transfer check: same trained model, held-out genes, other window sizes
+        for test_size in TEST_SIZES:
+            size_test = load_or_generate(test_genes, N_TEST, test_size, "test")
+            rmse, corr, size_preds = evaluate_model(model, size_test["features"], size_test["scalars"], size_test["rho"])
+            print(f"  trained w={window_size}, tested w={test_size}: RMSE={rmse:.4f}, corr={corr:.4f}")
+            np.savez(
+                f"test_predictions_{FILE_TAG}_trained{window_size}_tested{test_size}.npz",
+                true_rho=size_test["rho"].numpy(),
+                true_alpha=size_test["alpha"].numpy(),
+                pred_rho=size_preds.numpy(),
+            )
+
+
 if __name__ == "__main__":
     main()
