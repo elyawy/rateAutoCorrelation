@@ -29,11 +29,11 @@ sys.path.insert(0, str(REPO_DIR / "common"))
 from features_calculator import calculate_cnn_input, calculate_scalar_features
 from train_rho_regressor_amino import RhoRegressor
 
-AA_DIR = pathlib.Path("/home/elyalab/temp/orthomam_AA")
+AA_DIR = pathlib.Path("/home/pupkolab/temp/orthomam_AA")
 WEIGHTS_DIR = REPO_DIR  # folder holding rho_regressor_amino_w*.pt
 OUTPUT_NAME = "orthomam_predictions_amino.csv"
 ALPHABET_SIZE = 20
-WINDOWS = [250]  # in amino acid sites, tried in this order, biggest that fits
+WINDOWS = [1000]  # in amino acid sites, tried in this order, biggest that fits
 
 
 def extract_fasta_from_zip(zip_path):

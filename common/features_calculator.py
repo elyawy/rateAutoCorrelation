@@ -5,8 +5,7 @@ Provides functions to calculate entropy and parsimony statistics across MSA colu
 """
 import warnings
 import numpy as np
-from collections import Counter
-import msastats
+# import msastats
 import torch
 
 AMINO_ACIDS = set('ACDEFGHIKLMNPQRSTVWY')
@@ -214,34 +213,34 @@ def read_fasta_sequences(fasta_file):
     return sequences
 
 
-def calculate_indel_features(sequences):
-    """
-    Indel features with transformations to reduce outlier impact:
-    - avg_gap_size: log1p-transformed
-    - msa_len: log-transformed
-    - msa_max_len: divided by msa_len (fraction of alignment covered by longest seq)
-    - msa_min_len: divided by msa_len (fraction of alignment covered by shortest seq)
-    - tot_num_gaps: divided by (n_sequences * msa_len) → gap density
-    """
-    raw = msastats.calculate_msa_stats(sequences)[:9]
-    avg_gap_size  = raw[0]
-    msa_len       = raw[1]
-    msa_max_len   = raw[2]
-    msa_min_len   = raw[3]
-    tot_num_gaps  = raw[4]
-    n_seq = len(sequences)
+# def calculate_indel_features(sequences):
+#     """
+#     Indel features with transformations to reduce outlier impact:
+#     - avg_gap_size: log1p-transformed
+#     - msa_len: log-transformed
+#     - msa_max_len: divided by msa_len (fraction of alignment covered by longest seq)
+#     - msa_min_len: divided by msa_len (fraction of alignment covered by shortest seq)
+#     - tot_num_gaps: divided by (n_sequences * msa_len) → gap density
+#     """
+#     raw = msastats.calculate_msa_stats(sequences)[:9]
+#     avg_gap_size  = raw[0]
+#     msa_len       = raw[1]
+#     msa_max_len   = raw[2]
+#     msa_min_len   = raw[3]
+#     tot_num_gaps  = raw[4]
+#     n_seq = len(sequences)
 
-    return {
-        'avg_gap_size':            float(np.log1p(avg_gap_size)),
-        'msa_len':                 float(np.log(msa_len)) if msa_len > 0 else 0.0,
-        'msa_max_len':             float(msa_max_len / msa_len) if msa_len > 0 else 0.0,
-        'msa_min_len':             float(msa_min_len / msa_len) if msa_len > 0 else 0.0,
-        'tot_num_gaps':            float(tot_num_gaps / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
-        'num_gaps_len_one':        float(raw[5] / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
-        'num_gaps_len_two':        float(raw[6] / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
-        'num_gaps_len_three':      float(raw[7] / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
-        'num_gaps_len_at_least_four': float(raw[8] / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
-    }
+#     return {
+#         'avg_gap_size':            float(np.log1p(avg_gap_size)),
+#         'msa_len':                 float(np.log(msa_len)) if msa_len > 0 else 0.0,
+#         'msa_max_len':             float(msa_max_len / msa_len) if msa_len > 0 else 0.0,
+#         'msa_min_len':             float(msa_min_len / msa_len) if msa_len > 0 else 0.0,
+#         'tot_num_gaps':            float(tot_num_gaps / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
+#         'num_gaps_len_one':        float(raw[5] / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
+#         'num_gaps_len_two':        float(raw[6] / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
+#         'num_gaps_len_three':      float(raw[7] / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
+#         'num_gaps_len_at_least_four': float(raw[8] / (n_seq * msa_len)) if (n_seq * msa_len) > 0 else 0.0,
+#     }
 
 
 def calculate_entropy_mi(msa_array, alphabet_size=None, gap_value=-1):
