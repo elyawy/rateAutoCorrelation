@@ -17,7 +17,7 @@ import subprocess
 import time
 import csv
 import argparse
-import benchmarks.codeml_benchmark.config as config
+import config
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -38,7 +38,7 @@ def create_control_file(template_path, run_dir, seq_file, tree_file, true_alpha)
 
     control_content = template.replace('SEQFILE_PLACEHOLDER', str(seq_file))
     control_content = control_content.replace('TREEFILE_PLACEHOLDER', str(tree_file))
-    control_content = control_content.replace('WAGFILE_PLACEHOLDER', str(config.WAGDAT_FILE))
+    control_content = control_content.replace('WAGFILE_PLACEHOLDER', str(config.MODELDAT_FILE))
     control_content = control_content.replace('ALPHA_PLACEHOLDER', str(true_alpha))
 
     control_path = run_dir / 'control.ctl'
