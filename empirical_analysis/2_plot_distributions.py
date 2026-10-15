@@ -7,13 +7,10 @@ import pathlib
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import common.config as config
 import sys
-REPO_DIR = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_DIR))  # so `common` imports without setting PYTHONPATH
-sys.path.insert(0, str(REPO_DIR / "training"))
-sys.path.insert(0, str(REPO_DIR / "common"))
 
+REPO_DIR = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_DIR))
 import common.config as config
 
 
@@ -137,8 +134,6 @@ def main():
     print("Summary statistics:")
     print("\nRho:")
     print(df['pred_rho'].describe())
-    print("\nWindow used:")
-    print(df['window_used'].value_counts())
 
 
 if __name__ == "__main__":

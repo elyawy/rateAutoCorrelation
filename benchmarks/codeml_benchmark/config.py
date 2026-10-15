@@ -2,8 +2,6 @@
 Central configuration for the PAML simulation pipeline.
 All scripts import from this file to ensure reproducibility.
 """
-import subprocess
-import pathlib
 
 # ==========================================
 # REPRODUCIBILITY
@@ -33,27 +31,6 @@ MAX_TAXA = 200                      # Max number of taxa per tree
 # ==========================================
 # CODEML PARAMETERS
 # ==========================================
-CODEML_TEMPLATE = "codeml_template.ctl"
-CODEML_EXECUTABLE = "codeml"   # Assumes codeml is in PATH
-
-def find_wag_dat_path():
-    """Find wag.dat by parsing codeml's default control file."""
-    import tempfile
-    import re
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        subprocess.run([CODEML_EXECUTABLE],
-                      cwd=tmpdir,
-                      capture_output=True)
-
-        ctl_file = pathlib.Path(tmpdir) / "codeml.ctl"
-        if ctl_file.exists():
-            content = ctl_file.read_text()
-            match = re.search(r'aaRatefile\s*=\s*(.+\.dat)', content)
-            if match:
-                return match.group(1).replace('jones.dat', 'wag.dat').strip()
-
-    return "wag.dat"  # fallback
-
-
-WAGDAT_FILE = find_wag_dat_path()
+CODEML_TEMPLATE = "benchmarks/codeml_benchmark/codeml_template.ctl"
+CODEML_EXECUTABLE = "/home/pupkolab/Apps/paml-4.10.10-linux-x86_64/bin/codeml"   # Assumes codeml is in PATH
+MODELDAT_FILE = "/home/pupkolab/Apps/paml-4.10.10-linux-x86_64/dat/lg.dat"

@@ -1,18 +1,20 @@
 """
 Step 1 (protein version): extract features from OrthoMaM amino acid alignments.
 
-Cuts each alignment into non-overlapping WINDOW-site chunks and saves the chunk features to one npz
-(one row per chunk). Per-gene info, including genes skipped for being too short, goes to a CSV.
+Computes the features on each whole alignment (no chunking, so each keeps its own length).
+The alignments are split across N_WORKERS processes that each start once and work through their own share.
+Features of all genes are concatenated along the site axis into one array, with a lengths array to split
+them again. Per-gene info, including genes skipped for being too short, goes to a CSV.
 """
 
 import pathlib
 import sys
 import zipfile
+from concurrent.futures import ProcessPoolExecutor
 from io import StringIO
 
 import numpy as np
 import pandas as pd
-import torch
 from Bio import SeqIO
 
 REPO_DIR = pathlib.Path(__file__).resolve().parent.parent
@@ -22,11 +24,12 @@ import common.config as config
 sys.path.insert(0, str(REPO_DIR / "common"))
 from features_calculator import calculate_cnn_input, calculate_scalar_features
 
-AA_DIR = pathlib.Path("/home/elyalab/temp/orthomam_AA")
-WINDOW = 250  # amino acid sites
+AA_DIR = pathlib.Path("/home/pupkolab/temp/orthomam_AA")
+MIN_LENGTH = 100  # amino acid sites; shorter alignments are skipped (shortest length the regressor was tested on)
 ALPHABET_SIZE = 20
-FEATURES_NAME = f"orthomam_features_amino_w{WINDOW}.npz"
-GENE_META_NAME = f"orthomam_gene_meta_amino_w{WINDOW}.csv"
+N_WORKERS = 4
+FEATURES_NAME = "orthomam_features_amino_full.npz"
+GENE_META_NAME = "orthomam_gene_meta_amino_full.csv"
 
 
 def extract_fasta_from_zip(zip_path):
@@ -70,57 +73,75 @@ def looks_like_dna(sequences, n_check=20):
     return len(chars) == 0 or sum(chars.count(b) for b in "ACGT") / len(chars) >= 0.9
 
 
+def process_gene(zip_path):
+    """Return (row, features, scalars); features and scalars are None unless the gene is ok."""
+    filename, content = extract_fasta_from_zip(zip_path)
+    if filename is None:
+        return {"filename": zip_path.name, "status": "error"}, None, None
+    sequences = parse_fasta_content(content)
+    if not sequences:
+        return {"filename": filename, "status": "empty"}, None, None
+
+    row = {"filename": filename, **calculate_alignment_metadata(sequences)}
+    if looks_like_dna(sequences):
+        row.update(status="dna")
+        return row, None, None
+    if row["alignment_length"] < MIN_LENGTH:
+        row.update(status="too_short")
+        return row, None, None
+
+    row.update(status="ok")
+    return (
+        row,
+        calculate_cnn_input(sequences, alphabet_size=ALPHABET_SIZE).numpy(),
+        calculate_scalar_features(sequences, alphabet_size=ALPHABET_SIZE).numpy(),
+    )
+
+
+def process_share(worker_id, indexed_paths):
+    """Run in one worker process: handle this worker's share of (position, zip_path) pairs."""
+    results = []
+    for n, (idx, zip_path) in enumerate(indexed_paths, 1):
+        results.append((idx, *process_gene(zip_path)))
+        if n % 100 == 0:
+            print(f"  worker {worker_id}: {n}/{len(indexed_paths)}")
+    return results
+
+
 def main():
     zip_files = sorted(AA_DIR.glob("*.fasta.zip"))
     if not zip_files:
         print(f"ERROR: No .fasta.zip files found in {AA_DIR}")
         return
-    print(f"Found {len(zip_files)} zip files")
+    print(f"Found {len(zip_files)} zip files, using {N_WORKERS} workers")
 
-    features, scalars, chunk_genes = [], [], []
-    gene_rows = []
+    # interleaved shares (every N_WORKERS-th file), so big and small alignments spread evenly over the workers
+    indexed = list(enumerate(zip_files))
+    shares = [indexed[w::N_WORKERS] for w in range(N_WORKERS)]
 
-    for idx, zip_path in enumerate(zip_files, 1):
-        if idx % 10 == 0 or idx == 1:
-            print(f"Processing {idx}/{len(zip_files)}: {zip_path.name}")
+    with ProcessPoolExecutor(max_workers=N_WORKERS) as executor:
+        futures = [executor.submit(process_share, w, share) for w, share in enumerate(shares)]
+        results = [r for future in futures for r in future.result()]
+    results.sort(key=lambda r: r[0])  # back to the original file order
 
-        filename, content = extract_fasta_from_zip(zip_path)
-        if filename is None:
-            gene_rows.append({"filename": zip_path.name, "status": "error"})
-            continue
-        sequences = parse_fasta_content(content)
-        if not sequences:
-            gene_rows.append({"filename": filename, "status": "empty"})
-            continue
-
-        row = {"filename": filename, **calculate_alignment_metadata(sequences)}
-        if looks_like_dna(sequences):
-            row.update(status="dna", n_chunks=0)
-        elif row["alignment_length"] < WINDOW:
-            row.update(status="too_short", n_chunks=0)
-        else:
-            n_chunks = 0
-            for start in range(0, row["alignment_length"] - WINDOW + 1, WINDOW):
-                chunk = [seq[start:start + WINDOW] for seq in sequences]
-                features.append(calculate_cnn_input(chunk, alphabet_size=ALPHABET_SIZE))
-                scalars.append(calculate_scalar_features(chunk, alphabet_size=ALPHABET_SIZE))
-                chunk_genes.append(filename)
-                n_chunks += 1
-            row.update(status="ok", n_chunks=n_chunks)
-        gene_rows.append(row)
+    gene_rows = [row for _, row, _, _ in results]
+    ok = [(row["filename"], feat, scal) for _, row, feat, scal in results if feat is not None]
+    genes = [g for g, _, _ in ok]
+    features = [f for _, f, _ in ok]
+    scalars = [s for _, _, s in ok]
 
     config.RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         config.RESULTS_DIR / FEATURES_NAME,
-        features=torch.stack(features).numpy(),
-        scalars=torch.stack(scalars).numpy(),
-        gene=np.array(chunk_genes),
-        window=WINDOW,
+        features=np.concatenate(features, axis=1),  # (2, total number of sites over all genes)
+        lengths=np.array([f.shape[1] for f in features]),  # sites per gene, to split `features` again
+        scalars=np.stack(scalars),
+        gene=np.array(genes),
     )
     meta = pd.DataFrame(gene_rows)
     meta.to_csv(config.RESULTS_DIR / GENE_META_NAME, index=False)
 
-    print(f"\nSaved {len(features)} chunks to {config.RESULTS_DIR / FEATURES_NAME}")
+    print(f"\nSaved features for {len(features)} alignments to {config.RESULTS_DIR / FEATURES_NAME}")
     print(f"Gene status counts: {meta['status'].value_counts().to_dict()}")
 
 

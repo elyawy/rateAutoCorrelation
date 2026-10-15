@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 FILE_TAG = "amino_alphaprior"
 TRAIN_SIZE = 1000
-TEST_SIZES = [100, 250, 500, 1000]
+TEST_SIZES = [100, 250, 500, 1000, 2000]
 BINS = [0.0, 0.33, 0.66, 0.99]  # low / mid / high rho
 
 fig, axes = plt.subplots(1, len(TEST_SIZES), figsize=(4 * len(TEST_SIZES), 4), sharex=True, sharey=True)
