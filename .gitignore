@@ -8,3 +8,4 @@ lightgbm_model.pkl
 .venv
 training_data
 raxml_runs
+data/
