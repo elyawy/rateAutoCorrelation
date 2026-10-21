@@ -35,7 +35,6 @@ from torch import nn
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "common"))
 
-import prior
 from features_calculator import calculate_cnn_input, calculate_scalar_features
 
 ESTIMATES_CSV = Path("protein_estimates.csv")  # gene, newick
@@ -48,6 +47,7 @@ TEST_GENE_FRACTION = 0.1  # genes held out for the test set only
 SPLIT_SEED = 0
 N_WORKERS = 7
 ALPHA_RANGE = (0.1, 3.0)  # log-uniform
+RHO_RANGE = (0.01, 0.99)       # Min and Max Rho
 FILE_TAG = "amino_indel"
 GAMMA_CATEGORIES = 8
  
@@ -129,7 +129,7 @@ def generate_dataset(genes: list, n_samples: int, window_size: int) -> dict:
     `genes` is a list of (gene_key, gene_entry) pairs.
     """
     tasks = [
-        (random.choice(genes), random.uniform(*prior.RHO_RANGE), sample_alpha())
+        (random.choice(genes), random.uniform(*RHO_RANGE), sample_alpha())
         for _ in range(n_samples)
     ]
  
@@ -169,7 +169,7 @@ def load_or_generate(genes: list, n_samples: int, window_size: int, split: str) 
         return data
  
     data = generate_dataset(genes, n_samples, window_size)
-    meta = {"window_size": window_size, "alpha_range": ALPHA_RANGE, "rho_range": list(prior.RHO_RANGE),
+    meta = {"window_size": window_size, "alpha_range": ALPHA_RANGE, "rho_range": list(RHO_RANGE),
             "estimates": str(ESTIMATES_CSV), "indel_params": str(INDEL_CSV), "split_seed": SPLIT_SEED, "split": split}
     np.savez_compressed(
         path,

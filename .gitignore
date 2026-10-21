@@ -9,3 +9,5 @@ lightgbm_model.pkl
 training_data
 raxml_runs
 data/
+__pycache__/
+bins/

@@ -5,7 +5,7 @@ import random
 import numpy as np
 import torch
 
-from train_rho_regressor_amino_alphaprior import (
+from archive.old_training.train_rho_regressor_amino_alphaprior import (
     FILE_TAG, MANIFEST_PATH, N_TEST, SPLIT_SEED, TEST_GENE_FRACTION,
     RhoRegressor, evaluate_model, load_or_generate,
 )

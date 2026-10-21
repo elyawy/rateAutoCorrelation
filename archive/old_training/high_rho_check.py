@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-import train_rho_regressor_amino_alphaprior as base
+import archive.old_training.train_rho_regressor_amino_alphaprior as base
 from cnn_embedding import CNNScalarEmbedding  # noqa: F401  (needed to unpickle the posterior)
 
 RHO = 0.9
