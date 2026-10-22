@@ -26,7 +26,7 @@ OUTPUT = Path("protein_estimates.csv")
 MSA_OUTPUT = Path("protein_msas.parquet")
 FAILURE_LOG = Path("protein_estimates_failures.csv")
 MODEL = "LG+G8"
-N_WORKERS = 6
+N_WORKERS = 8
 RAXML_TIMEOUT = 3600  # seconds per gene
 FIELDS = ["gene", "alpha", "final_loglik", "n_taxa", "n_tips_removed", "n_special_dropped", "newick"]
 
