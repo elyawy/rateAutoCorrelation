@@ -20,13 +20,13 @@ from Bio import Phylo
 from msa_cleaning import clean_alignment, find_alignments, read_records
 
 SELECTED_CSV = Path("selected_msas.csv")
-TREE_DIR = Path("/home/elyalab/Data/orthomam/trees")  # {gene}_NT_AL.rootree
-RAXML_PATH = Path("/home/elyalab/Apps/raxml-ng")
+TREE_DIR = Path("data/raw/trees")  # {gene}_NT_AL.rootree
+RAXML_PATH = Path("bins/raxml-ng")
 OUTPUT = Path("protein_estimates.csv")
 MSA_OUTPUT = Path("protein_msas.parquet")
 FAILURE_LOG = Path("protein_estimates_failures.csv")
 MODEL = "LG+G8"
-N_WORKERS = 10
+N_WORKERS = 6
 RAXML_TIMEOUT = 3600  # seconds per gene
 FIELDS = ["gene", "alpha", "final_loglik", "n_taxa", "n_tips_removed", "n_special_dropped", "newick"]
 
@@ -54,7 +54,7 @@ def process_gene(gene: str, aln_path: str, raxml: str):
             (tmp / "tree.nwk").write_text(buf.getvalue())
 
             result = subprocess.run(
-                [raxml, "--evaluate", "--msa", str(tmp / "aln.fasta"), "--msa-format", "FASTA",
+                [raxml, "--evaluate", "--fast", "--msa", str(tmp / "aln.fasta"), "--msa-format", "FASTA",
                  "--data-type", "AA", "--tree", str(tmp / "tree.nwk"), "--model", MODEL,
                  "--prefix", str(tmp / "out"), "--threads", "1", "--redo"],
                 capture_output=True, text=True, timeout=RAXML_TIMEOUT,
@@ -75,6 +75,24 @@ def process_gene(gene: str, aln_path: str, raxml: str):
         return None, (gene, f"{type(e).__name__}: {e}")
 
 
+def load_previous():
+    """Reload the outputs of an interrupted run, so those genes are kept and not redone.
+    Only genes present in both the csv and the parquet are kept. Delete the failure log to retry failed genes."""
+    rows, msa_rows, failures = [], [], []
+    if OUTPUT.exists() and MSA_OUTPUT.exists():
+        with open(OUTPUT, newline="") as f:
+            rows = list(csv.DictReader(f))
+        t = pq.read_table(MSA_OUTPUT).to_pydict()
+        msa_rows = list(zip(t["gene"], t["taxon"], t["sequence"]))
+        both = {r["gene"] for r in rows} & set(t["gene"])
+        rows = [r for r in rows if r["gene"] in both]
+        msa_rows = [m for m in msa_rows if m[0] in both]
+    if FAILURE_LOG.exists():
+        with open(FAILURE_LOG, newline="") as f:
+            failures = [tuple(r) for r in list(csv.reader(f))[1:]]
+    return rows, msa_rows, failures
+
+
 def main():
     genes = [row["gene"] for row in csv.DictReader(open(SELECTED_CSV))]
     raxml = str(RAXML_PATH)
@@ -83,7 +101,10 @@ def main():
     genes = [g for g in genes if g in alignments]
     print(f"{len(genes)} genes to process ({len(missing)} in selected_msas.csv have no alignment file)")
 
-    rows, msa_rows, failures = [], [], []
+    rows, msa_rows, failures = load_previous()
+    skip = {r["gene"] for r in rows} | {g for g, _ in failures}
+    genes = [g for g in genes if g not in skip]
+    print(f"resuming: {len(rows)} genes done, {len(failures)} failed earlier, {len(genes)} left")
 
     def save():
         with open(OUTPUT, "w", newline="") as f:

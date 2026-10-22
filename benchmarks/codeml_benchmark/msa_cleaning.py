@@ -15,7 +15,8 @@ from pathlib import Path
 
 import numpy as np
 
-AA_DIR = Path("/home/elyalab/temp/orthomam_AA_unfiltered")  # *.aln.zip or *.aln, searched recursively
+AA_DIR = Path("data/raw/msas")  # *.aln.zip or *.aln, searched recursively
+TREE_DIR = Path("data/raw/trees")  # {gene}_NT_AL.rootree
 MAX_DROPPED_FRACTION = 0.2
 MIN_TAXA = 4
 

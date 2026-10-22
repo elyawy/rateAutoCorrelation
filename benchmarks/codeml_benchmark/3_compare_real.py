@@ -7,19 +7,15 @@ writes results_real.csv (gene, alpha, nn_rho, codeml_rho) and prints correlation
 
 import pathlib
 import re
-import sys
 
 import numpy as np
 import pandas as pd
 import torch
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
-sys.path.extend([str(ROOT / "training"), str(ROOT / "common")])
+from common.model import RhoRegressor
+from common.features_calculator import calculate_cnn_input, calculate_scalar_features
 
-from train_rho_regressor_amino_indel import RhoRegressor
-from features_calculator import calculate_cnn_input, calculate_scalar_features
-
-MODEL_PATH = ROOT / "rho_regressor_amino_indel_w1000.pt"
+MODEL_PATH = "models/rho_regressor_amino_indel_w1000.pt"
 ALPHABET_SIZE = 20
 MSA_DIR = pathlib.Path("msas")
 RUNS_DIR = pathlib.Path("codeml_runs_real")

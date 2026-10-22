@@ -15,7 +15,7 @@ import json
 import math
 import random
 import re
-import sys
+
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
@@ -33,9 +33,9 @@ from msasim.constants import SITE_RATE_MODELS
 from msasim.distributions import ZipfDistribution
 from torch import nn
 
-sys.path.append(str(Path(__file__).resolve().parent.parent / "common"))
 
-from features_calculator import calculate_cnn_input, calculate_scalar_features
+from common.features_calculator import calculate_cnn_input, calculate_scalar_features
+from common.model import RhoRegressor
 
 ESTIMATES_CSV = Path("protein_estimates.csv")  # gene, newick
 INDEL_CSV = Path("orthomam_indel_params.csv")  # per-gene indel model
@@ -183,25 +183,6 @@ def load_or_generate(genes: list, n_samples: int, window_size: int, split: str) 
     print(f"  saved simulations to {path}")
     return data
  
- 
-class RhoRegressor(nn.Module):
-    """CNN embedding of MSA summary stats -> MLP head -> scalar rho estimate."""
- 
-    def __init__(self, n_scalars=2):
-        super().__init__()
-        self.cnn = nn.Sequential(
-            nn.Conv1d(2, 32, kernel_size=5, padding=2), nn.ReLU(),
-            nn.Conv1d(32, 64, kernel_size=5, padding=2), nn.ReLU(),
-            nn.Conv1d(64, 128, kernel_size=5, padding=2), nn.ReLU(),
-        )
-        self.head = nn.Sequential(
-            nn.Linear(128 + n_scalars, 64), nn.ReLU(),
-            nn.Linear(64, 1),
-        )
- 
-    def forward(self, x, scalars):
-        embedding = self.cnn(x).mean(dim=-1)
-        return self.head(torch.cat([embedding, scalars], dim=1)).squeeze(-1)
  
  
 def train_model(train_features, train_scalars, train_rhos, test_features, test_scalars, test_rhos, n_epochs=100, lr=1e-3, batch_size=64):

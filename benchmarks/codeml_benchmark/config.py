@@ -32,5 +32,5 @@ MAX_TAXA = 200                      # Max number of taxa per tree
 # CODEML PARAMETERS
 # ==========================================
 CODEML_TEMPLATE = "benchmarks/codeml_benchmark/codeml_template.ctl"
-CODEML_EXECUTABLE = "/home/pupkolab/Apps/paml-4.10.10-linux-x86_64/bin/codeml"   # Assumes codeml is in PATH
-MODELDAT_FILE = "/home/pupkolab/Apps/paml-4.10.10-linux-x86_64/dat/lg.dat"
+CODEML_EXECUTABLE = "bins/paml-4.10.10-linux-x86_64/bin/codeml"   # Assumes codeml is in PATH
+MODELDAT_FILE = "bins/paml-4.10.10-linux-x86_64/dat/lg.dat"

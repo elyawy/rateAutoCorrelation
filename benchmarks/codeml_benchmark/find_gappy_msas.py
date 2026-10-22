@@ -11,10 +11,10 @@ from pathlib import Path
 from msa_cleaning import clean_alignment, find_alignments, read_records
 
 OUTPUT = Path("selected_msas.csv")
-MIN_COLUMNS = 1500
-MAX_COLUMNS = 3000
-MIN_UNIQUE_LENGTHS = 50
-N_WORKERS = 10
+MIN_COLUMNS = 100 # 500
+MAX_COLUMNS = 50000 # 3000
+MIN_UNIQUE_LENGTHS = 1 # 50
+N_WORKERS = 6
 
 
 def inspect(item):
