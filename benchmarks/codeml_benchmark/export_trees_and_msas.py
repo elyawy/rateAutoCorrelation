@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-ESTIMATES_CSV = Path("protein_estimates.csv")
-MSA_PARQUET = Path("protein_msas.parquet")
-TREE_DIR = Path("trees")
-MSA_DIR = Path("msas")
+ESTIMATES_CSV = Path("data/protein_estimates.csv")
+MSA_PARQUET = Path("data/protein_msas.parquet")
+TREE_DIR = Path("data/trees")
+MSA_DIR = Path("data/msas")
 
 
 def main():

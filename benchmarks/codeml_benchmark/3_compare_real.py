@@ -17,9 +17,9 @@ from common.features_calculator import calculate_cnn_input, calculate_scalar_fea
 
 MODEL_PATH = "models/rho_regressor_amino_indel_w1000.pt"
 ALPHABET_SIZE = 20
-MSA_DIR = pathlib.Path("msas")
-RUNS_DIR = pathlib.Path("codeml_runs_real")
-ESTIMATES_CSV = pathlib.Path("protein_estimates.csv")
+MSA_DIR = pathlib.Path("data/msas")
+RUNS_DIR = pathlib.Path("data/codeml_runs_real")
+ESTIMATES_CSV = pathlib.Path("data/protein_estimates.csv")
 
 
 def read_fasta_seqs(path):
@@ -57,6 +57,10 @@ def main():
             nn_rho = model(x, s).item()
         rows.append({"gene": gene, "nn_rho": nn_rho,
                      "codeml_rho": parse_codeml_rho(RUNS_DIR / gene / "mlb")})
+        # progress print
+        if len(rows) % 100 == 0:
+            print(f"processed {len(rows)} genes, last: {gene} | nn_rho {nn_rho:.3f} | "
+                  f"codeml_rho {rows[-1]['codeml_rho']:.3f}")
 
     df = pd.DataFrame(rows)
     est = pd.read_csv(ESTIMATES_CSV, usecols=["gene", "alpha"]).astype({"gene": str})

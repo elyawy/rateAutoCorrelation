@@ -21,10 +21,10 @@ import config
 
 HERE = pathlib.Path(__file__).resolve().parent
 TEMPLATE = HERE / "codeml_template.ctl"
-ESTIMATES_CSV = pathlib.Path("protein_estimates.csv")
-TREE_DIR = pathlib.Path("trees")
-MSA_DIR = pathlib.Path("msas")
-RUNS_DIR = pathlib.Path("codeml_runs_real")
+ESTIMATES_CSV = pathlib.Path("data/protein_estimates.csv")
+TREE_DIR = pathlib.Path("data/trees")
+MSA_DIR = pathlib.Path("data/msas")
+RUNS_DIR = pathlib.Path("data/codeml_runs_real")
 
 
 def read_fasta(path):
@@ -61,13 +61,13 @@ def run_gene(gene, alpha, tree_dir, msa_dir, runs_dir):
     ctl = (TEMPLATE.read_text()
            .replace("SEQFILE_PLACEHOLDER", "alignment.phy")
            .replace("TREEFILE_PLACEHOLDER", "tree.nwk")
-           .replace("WAGFILE_PLACEHOLDER", str(config.MODELDAT_FILE))
+           .replace("WAGFILE_PLACEHOLDER", str(pathlib.Path(config.MODELDAT_FILE).resolve()))
            .replace("ALPHA_PLACEHOLDER", str(alpha)))
     (run_dir / "control.ctl").write_text(ctl)
 
     start = time.time()
     try:
-        subprocess.run([config.CODEML_EXECUTABLE, "control.ctl"], cwd=run_dir,
+        subprocess.run([str(pathlib.Path(config.CODEML_EXECUTABLE).resolve()), "control.ctl"], cwd=run_dir,
                        capture_output=True, text=True, timeout=86400)
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
