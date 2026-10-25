@@ -19,14 +19,14 @@ from Bio import Phylo
 
 from msa_cleaning import clean_alignment, find_alignments, read_records
 
-SELECTED_CSV = Path("selected_msas.csv")
+SELECTED_CSV = Path("data/selected_msas.csv")
 TREE_DIR = Path("data/raw/trees")  # {gene}_NT_AL.rootree
 RAXML_PATH = Path("bins/raxml-ng")
-OUTPUT = Path("protein_estimates.csv")
-MSA_OUTPUT = Path("protein_msas.parquet")
-FAILURE_LOG = Path("protein_estimates_failures.csv")
+OUTPUT = Path("data/protein_estimates.csv")
+MSA_OUTPUT = Path("data/protein_msas.parquet")
+FAILURE_LOG = Path("data/protein_estimates_failures.csv")
 MODEL = "LG+G8"
-N_WORKERS = 8
+N_WORKERS = 6
 RAXML_TIMEOUT = 3600  # seconds per gene
 FIELDS = ["gene", "alpha", "final_loglik", "n_taxa", "n_tips_removed", "n_special_dropped", "newick"]
 
