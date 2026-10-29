@@ -8,7 +8,7 @@ lightgbm_model.pkl
 .venv
 training_data
 raxml_runs
-data/
+data/no_sync
 __pycache__/
 bins/
 *.egg-info/
