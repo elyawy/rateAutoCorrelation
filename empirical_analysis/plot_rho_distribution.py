@@ -9,7 +9,7 @@
 import pandas as pd
 from matplotlib import pyplot as plt
 
-RESULTS_FILE_NN = "empirical_analysis/results/results_real.csv"
+RESULTS_FILE_NN = "empirical_analysis/results/results_real_new.csv"
 RESULTS_FILE_PAML = "empirical_analysis/results/codeml_rho_raw.csv"
 # gene,nn_rho,codeml_rho,alpha <- we only plot rho values from NN, also alpha for completeness.
 
@@ -18,8 +18,8 @@ df_cnn = pd.read_csv(RESULTS_FILE_NN)
 df_paml = pd.read_csv(RESULTS_FILE_PAML)
 df_paml = df_paml.rename(columns={"rho": "codeml_rho"})
 # clip values to be between 0 and 1, those above 1 become 1, those below 0 become 0. This is because the neural network can predict values outside of the range [0, 1], but we want to plot the distribution of rho values within this range.
-df_cnn["nn_rho"] = df_cnn["nn_rho"].clip(0, 1)
-df_paml["codeml_rho"] = df_paml["codeml_rho"].clip(0, 1)
+# df_cnn["nn_rho"] = df_cnn["nn_rho"].clip(0, 1)
+# df_paml["codeml_rho"] = df_paml["codeml_rho"].clip(0, 1)
 
 plt.style.use("seaborn-v0_8-whitegrid")
 plt.figure(figsize=(10, 6))
@@ -31,3 +31,4 @@ plt.ylabel("Frequency", fontsize=14)
 plt.title("Distribution of $\\rho$ Values", fontsize=16)
 plt.legend()
 plt.savefig("empirical_analysis/results/plots/rho_distribution_histogram.png", dpi=300)
+

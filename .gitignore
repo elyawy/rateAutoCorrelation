@@ -1,14 +1,13 @@
-__pycache__
-simulated_data
-codeml_runs
-trees_old
-inference_pipeline/results
-inference_pipeline/features/features.csv
-lightgbm_model.pkl
-.venv
-training_data
-raxml_runs
-data/no_sync
 __pycache__/
-bins/
+*.pyc
+*.npz
 *.egg-info/
+.venv/
+# generated / large data
+bins/
+data/
+codeml_runs/
+simulated_data/
+training_data/
+raxml_runs/
+*.log

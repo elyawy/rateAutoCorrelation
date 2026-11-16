@@ -18,4 +18,5 @@ class RhoRegressor(nn.Module):
  
     def forward(self, x, scalars):
         embedding = self.cnn(x).mean(dim=-1)
-        return self.head(torch.cat([embedding, scalars], dim=1)).squeeze(-1)
+        # sigmoid keeps the estimate in (0, 1); the training loss is computed on this bounded output
+        return torch.sigmoid(self.head(torch.cat([embedding, scalars], dim=1))).squeeze(-1)

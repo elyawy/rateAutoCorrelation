@@ -38,7 +38,7 @@ def create_control_file(template_path, run_dir, seq_file, tree_file, true_alpha)
 
     control_content = template.replace('SEQFILE_PLACEHOLDER', str(seq_file))
     control_content = control_content.replace('TREEFILE_PLACEHOLDER', str(tree_file))
-    control_content = control_content.replace('WAGFILE_PLACEHOLDER', str(config.MODELDAT_FILE))
+    control_content = control_content.replace('WAGFILE_PLACEHOLDER', str(pathlib.Path(config.MODELDAT_FILE).resolve()))  # absolute: codeml runs with cwd=run_dir
     control_content = control_content.replace('ALPHA_PLACEHOLDER', str(true_alpha))
 
     control_path = run_dir / 'control.ctl'
@@ -51,10 +51,12 @@ def create_control_file(template_path, run_dir, seq_file, tree_file, true_alpha)
 def run_codeml(control_file, run_dir):
     """Execute codeml in the run directory and return success status and elapsed time."""
     start_time = time.time()
+    # absolute: with cwd=run_dir a relative executable path would be looked up inside the run folder
+    codeml = os.path.abspath(shutil.which(config.CODEML_EXECUTABLE) or config.CODEML_EXECUTABLE)
 
     try:
         result = subprocess.run(
-            [config.CODEML_EXECUTABLE, str(control_file.name)],
+            [codeml, str(control_file.name)],
             cwd=run_dir,
             capture_output=True,
             text=True,

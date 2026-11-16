@@ -7,8 +7,8 @@ from common.features_calculator import calculate_cnn_input, calculate_scalar_fea
 from common.model import RhoRegressor
 
 MSAS = "data/no_sync/msas"
-WEIGHTS = "models/rho_regressor_amino_indel_w1000.pt"
-OUT = "data/results_real.csv"
+WEIGHTS = "models/rho_regressor_amino_indel_trees500_gap_w1000.pt"
+OUT = "data/results_real_new.csv"
 
 
 

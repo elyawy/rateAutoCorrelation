@@ -4,13 +4,13 @@ from torch import nn
 
 
 from common.features_calculator import calculate_cnn_input, calculate_scalar_features
-
+from common.model import RhoRegressor
 SAMPLE = "data/random_sample_200.csv"
 STATS = "data/real_strip_stats.csv"
-RUNS = {"gapped": "data/codeml_runs_real_gapped", "stripped": "data/codeml_runs_real_stripped"}
-MSAS = {"gapped": "data/real_gapped", "stripped": "data/real_stripped"}
-WEIGHTS = "models/rho_regressor_amino_indel_w1000.pt"
-OUT = "data/results_real_stripped.csv"
+RUNS = {"gapped": "data/no_sync/codeml_runs_real_gapped", "stripped": "data/no_sync/codeml_runs_real_stripped"}
+MSAS = {"gapped": "data/no_sync/real_gapped", "stripped": "data/no_sync/real_stripped"}
+WEIGHTS = "models/rho_regressor_amino_indel_trees500_gap_w1000.pt"
+OUT = "data/results_real_stripped_new.csv"
 CAP = 0.989
 
 def codeml_rho(run, g):
@@ -35,18 +35,6 @@ def read_fasta(path):
                 cur.append(line.strip())
     seqs.append("".join(cur))
     return seqs
-
-# CNN
-class RhoRegressor(nn.Module):
-    def __init__(self, n_scalars=2):
-        super().__init__()
-        self.cnn = nn.Sequential(
-            nn.Conv1d(2, 32, 5, padding=2), nn.ReLU(),
-            nn.Conv1d(32, 64, 5, padding=2), nn.ReLU(),
-            nn.Conv1d(64, 128, 5, padding=2), nn.ReLU())
-        self.head = nn.Sequential(nn.Linear(128 + n_scalars, 64), nn.ReLU(), nn.Linear(64, 1))
-    def forward(self, x, s):
-        return self.head(torch.cat([self.cnn(x).mean(-1), s], 1)).squeeze(-1)
 
 model = RhoRegressor()
 model.load_state_dict(torch.load(WEIGHTS, map_location="cpu"))

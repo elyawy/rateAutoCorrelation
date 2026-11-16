@@ -14,14 +14,12 @@ import numpy as np
 import pandas as pd
 import torch
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]  # <root>/benchmarks/codeml_benchmark/3_compare.py
-sys.path.extend([str(ROOT / "training"), str(ROOT / "common")])
 
 import config
-from train_rho_regressor_amino_alphaprior import RhoRegressor
-from features_calculator import calculate_cnn_input, calculate_scalar_features
+from common.model import RhoRegressor  # sigmoid-bounded version, matches the new weights
+from common.features_calculator import calculate_cnn_input, calculate_scalar_features
 
-MODEL_PATH = ROOT / "rho_regressor_amino_alphaprior_w1000.pt"
+MODEL_PATH = pathlib.Path("models/rho_regressor_amino_indel_trees500_gap_w1000.pt")
 ALPHABET_SIZE = 20
 MIN_VARIABLE_SITES = 10  # alignments with fewer variable columns are excluded from the stats
 
