@@ -41,9 +41,9 @@ python scripts/download_data.py
 - `results/sim_benchmark/` — simulated benchmark comparison
 - `results/real_data/` — real-data fit and correlation metrics
 - `results/stripped_core/` — gap-column stripping analysis
-- `results/indel_experiment/` — indel awareness benchmark
+- `results/indel_experiment/` — indel awareness benchmark (not yet in repo)
 - `results/shuffle_control/` — shuffled-column control
-- `results/alignment_effect/` — MAFFT / alignment sensitivity analysis
+- `results/alignment_effect/` — MAFFT / alignment sensitivity analysis (not yet in repo)
 
 The legacy simulation workflow is now split across `experiments/sim_benchmark/`
 and `pipeline/3_codeml/`. Its generated outputs are `results/sim_benchmark/`
