@@ -9,8 +9,10 @@
 import pandas as pd
 from matplotlib import pyplot as plt
 
-RESULTS_FILE_NN = "empirical_analysis/results/results_real_new.csv"
-RESULTS_FILE_PAML = "empirical_analysis/results/codeml_rho_raw.csv"
+import config
+
+RESULTS_FILE_NN = config.REAL_CNN_RESULTS
+RESULTS_FILE_PAML = config.REAL_CODEML_RESULTS
 # gene,nn_rho,codeml_rho,alpha <- we only plot rho values from NN, also alpha for completeness.
 
 
@@ -30,5 +32,5 @@ plt.xlabel(r"$\rho$", fontsize=14)
 plt.ylabel("Frequency", fontsize=14)
 plt.title("Distribution of $\\rho$ Values", fontsize=16)
 plt.legend()
-plt.savefig("empirical_analysis/results/plots/rho_distribution_histogram.png", dpi=300)
+plt.savefig(config.RHO_DISTRIBUTION_PLOT, dpi=300)
 
