@@ -41,7 +41,7 @@ MODEL_PATH = str((REPO_ROOT / "models" / "rho_regressor_amino_indel_trees500_gap
 
 TRAIN_ESTIMATES_CSV = (REPO_ROOT / "pipeline" / "2_training" / "inputs" / "protein_estimates_train500.csv").resolve()
 TEST_ESTIMATES_CSV = (REPO_ROOT / "pipeline" / "2_training" / "inputs" / "protein_estimates_test200.csv").resolve()
-INDEL_PARAMS_CSV = (DATA_DIR / "no_sync" / "indel_estimates_2.csv").resolve()
+INDEL_PARAMS_CSV = (DATA_DIR  / "indel_estimates_orthomam.csv").resolve()
 REAL_MSA_DIR = (DATA_DIR / "no_sync" / "msas").resolve()
 REAL_GAPPED_MSA_DIR = (DATA_DIR / "no_sync" / "real_gapped").resolve()
 REAL_STRIPPED_MSA_DIR = (DATA_DIR / "no_sync" / "real_stripped").resolve()
