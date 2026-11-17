@@ -1,36 +1,82 @@
-# plotting the histogram of rho values for both the entire orthomam database (minus several genes)
-# predicted values from the neural network and PAML on the empirical unfiltered MSAs.
-# codeml should be in orange and nn in blue, both slightly transparent, with a legend.
-# a color-blind friendly way to distinguish the two distributions should be used, such as different hatch patterns or line styles.
-# style should be clean with right and top spines removed, and the x and y axis labels should be larger than the default size.
-# seaborn style should be used, and the figure should be saved as a high-resolution PNG file (300dpi).
-# rho should use the LaTeX symbol for rho.
+"""Real-data rho figures: CNN vs codeml on the OrthoMaM genes.
 
+Reads  results/real_data/results_real_new.csv   (gene, nn_rho)
+       results/real_data/codeml_rho_raw.csv     (gene, rho)
+Writes rho_distribution_histogram.png   histogram of both estimators (all genes)
+       rho_cnn_vs_codeml_hexbin.png     CNN vs codeml per gene (genes with a codeml rho)
+       results/real_data/summary.csv    n, r, RMSE, bias (CNN - codeml)
+"""
+
+import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
 import config
 
-RESULTS_FILE_NN = config.REAL_CNN_RESULTS
-RESULTS_FILE_PAML = config.REAL_CODEML_RESULTS
-# gene,nn_rho,codeml_rho,alpha <- we only plot rho values from NN, also alpha for completeness.
+BLUE, ORANGE = "#0072B2", "#E69F00"  # color-blind friendly (Okabe-Ito)
 
-
-df_cnn = pd.read_csv(RESULTS_FILE_NN)
-df_paml = pd.read_csv(RESULTS_FILE_PAML)
-df_paml = df_paml.rename(columns={"rho": "codeml_rho"})
-# clip values to be between 0 and 1, those above 1 become 1, those below 0 become 0. This is because the neural network can predict values outside of the range [0, 1], but we want to plot the distribution of rho values within this range.
-# df_cnn["nn_rho"] = df_cnn["nn_rho"].clip(0, 1)
-# df_paml["codeml_rho"] = df_paml["codeml_rho"].clip(0, 1)
+df_cnn = pd.read_csv(config.REAL_CNN_RESULTS).rename(columns={"rho": "nn_rho"})
+df_paml = pd.read_csv(config.REAL_CODEML_RESULTS).rename(columns={"rho": "codeml_rho"})
+print(f"read {config.REAL_CNN_RESULTS} ({len(df_cnn)} genes)")
+print(f"read {config.REAL_CODEML_RESULTS} ({len(df_paml)} genes)")
 
 plt.style.use("seaborn-v0_8-whitegrid")
-plt.figure(figsize=(10, 6))
-plt.hist(df_cnn["nn_rho"], bins=30, alpha=0.6, label="Neural Network", color="blue", edgecolor="black")
-plt.hist(df_paml["codeml_rho"], bins=30, alpha=0.6, label="PAML", color="orange", edgecolor="black", hatch="//")
 
-plt.xlabel(r"$\rho$", fontsize=14)
-plt.ylabel("Frequency", fontsize=14)
-plt.title("Distribution of $\\rho$ Values", fontsize=16)
-plt.legend()
-plt.savefig(config.RHO_DISTRIBUTION_PLOT, dpi=300)
 
+def clean_axes(ax):
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.xaxis.label.set_size(14)
+    ax.yaxis.label.set_size(14)
+
+
+# ---- 1. histogram (standalone) ----
+fig, ax = plt.subplots(figsize=(10, 6))
+bins = np.linspace(0, 1, 31)
+for values, color, ls, label in [
+    (df_cnn["nn_rho"], BLUE, "-", "Neural network"),
+    (df_paml["codeml_rho"], ORANGE, "--", "PAML (codeml)"),
+]:
+    ax.hist(values, bins=bins, color=color, alpha=0.25)  # light fill
+    ax.hist(values, bins=bins, histtype="step", color=color, linestyle=ls, linewidth=2.2, label=label)
+ax.set_xlabel(r"$\rho$")
+ax.set_ylabel("Number of genes")
+ax.set_xlim(0, 1)
+ax.legend(frameon=False, fontsize=12)
+clean_axes(ax)
+fig.tight_layout()
+fig.savefig(config.RHO_DISTRIBUTION_PLOT, dpi=300)
+plt.close(fig)
+print(f"wrote {config.RHO_DISTRIBUTION_PLOT}")
+
+# ---- 2. agreement, per gene ----
+df = df_cnn.merge(df_paml, on="gene").dropna(subset=["nn_rho", "codeml_rho"])
+x, y = df["codeml_rho"].to_numpy(), df["nn_rho"].to_numpy()
+n = len(df)
+r = float(np.corrcoef(x, y)[0, 1])
+rmse = float(np.sqrt(np.mean((y - x) ** 2)))
+bias = float(np.mean(y - x))
+print(f"n={n} r={r:.3f} rmse={rmse:.3f} bias(CNN-codeml)={bias:+.3f}")
+
+pd.DataFrame([{"n": n, "r": r, "rmse": rmse, "bias_cnn_minus_codeml": bias}]).to_csv(
+    config.REAL_SUMMARY_CSV, index=False, float_format="%.4f")
+print(f"wrote {config.REAL_SUMMARY_CSV}")
+
+fig, ax = plt.subplots(figsize=(7, 6))
+hb = ax.hexbin(x, y, gridsize=50, extent=(0, 1, 0, 1), mincnt=1, bins="log", cmap="viridis")
+ax.plot([0, 1], [0, 1], color="black", linestyle="--", linewidth=1)
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_aspect("equal")
+ax.set_xlabel(r"codeml $\rho$")
+ax.set_ylabel(r"CNN $\rho$")
+ax.text(0.04, 0.96, f"n = {n:,}\nr = {r:.3f}\nRMSE = {rmse:.3f}\nbias = {bias:+.3f}",
+        transform=ax.transAxes, va="top", fontsize=12,
+        bbox=dict(boxstyle="round", facecolor="white", edgecolor="0.7", alpha=0.9))
+cb = fig.colorbar(hb, ax=ax, shrink=0.8)
+cb.set_label("Genes per bin (log scale)", fontsize=12)
+clean_axes(ax)
+fig.tight_layout()
+fig.savefig(config.RHO_HEXBIN_PLOT, dpi=300)
+plt.close(fig)
+print(f"wrote {config.RHO_HEXBIN_PLOT}")

@@ -24,7 +24,7 @@ import config
 
 # ---- EDIT THESE ----
 DATA_DIR = Path(config.DATA_DIR)
-GAPPED_DIR = DATA_DIR / "real_gapped"                      # <gene>.fasta
+GAPPED_DIR = config.REAL_GAPPED_MSA_DIR                      # <gene>.fasta
 TREE_DIR = Path(config.REAL_GAPPED_CODEML_RUNS_DIR)        # <gene>/tree.nwk
 GENE_LIST = DATA_DIR / "random_sample_200.csv"             # column "gene"
 OUT_DIR = DATA_DIR / "core_genes_codeml"
