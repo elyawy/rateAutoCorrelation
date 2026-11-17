@@ -11,7 +11,7 @@ RUNS = {
     "gapped": str(config.REAL_GAPPED_CODEML_RUNS_DIR),
     "stripped": str(config.DATA_DIR / "no_sync" / "codeml_runs_real_stripped"),
 }
-MSAS = {"gapped": str(config.DATA_DIR / "real_gapped"), "stripped": str(config.REAL_STRIPPED_MSA_DIR)}
+MSAS = {"gapped": str(config.REAL_GAPPED_MSA_DIR), "stripped": str(config.REAL_STRIPPED_MSA_DIR)}
 WEIGHTS = config.MODEL_PATH
 OUT = str(config.REPO_ROOT / "results" / "stripped_core" / "results_real_stripped_new.csv")
 CAP = 0.989
@@ -62,5 +62,5 @@ df["zero_branch_frac"] = [zero_branch_frac(g) for g in df.gene]
 df.to_csv(OUT, index=False)
 
 ok = df.dropna(subset=["shift"])
-print(f"{len(ok)} genes with both rho, {int(ok.capped.sum())} capped, {df.shift.isna().sum()} missing")
-print("mean shift (uncapped):", round(ok[~ok.capped].shift.mean(), 4))
+print(f"{len(ok)} genes with both rho, {int(ok['capped'].sum())} capped, {df['shift'].isna().sum()} missing")
+print("mean shift (uncapped):", round(ok[~ok["capped"]]["shift"].mean(), 4))

@@ -36,6 +36,7 @@ TRAIN_ESTIMATES_CSV = (REPO_ROOT / "pipeline" / "2_training" / "inputs" / "prote
 TEST_ESTIMATES_CSV = (REPO_ROOT / "pipeline" / "2_training" / "inputs" / "protein_estimates_test200.csv").resolve()
 INDEL_PARAMS_CSV = (DATA_DIR / "no_sync" / "indel_estimates_2.csv").resolve()
 REAL_MSA_DIR = (DATA_DIR / "no_sync" / "msas").resolve()
+REAL_GAPPED_MSA_DIR = (DATA_DIR / "no_sync" / "real_gapped").resolve()
 REAL_STRIPPED_MSA_DIR = (DATA_DIR / "no_sync" / "real_stripped").resolve()
 REAL_ESTIMATES_CSV = (DATA_DIR / "no_sync" / "protein_estimates.csv").resolve()
 REAL_CODEML_RUNS_DIR = (DATA_DIR / "no_sync" / "codeml_runs_real").resolve()
