@@ -14,6 +14,7 @@ Plus truth.csv with all true parameters.
 
 import pathlib
 import random
+import csv
 
 from ete3 import Tree
 from msasim import (
