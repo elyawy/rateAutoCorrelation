@@ -93,6 +93,7 @@ def evaluate_model(model, test_features, test_scalars, test_rhos):
 def main():
     torch.manual_seed(config.TORCH_SEED)
     print(f"torch_seed={config.TORCH_SEED}")
+    Path(config.TRAINING_SIMULATION_DIR).mkdir(parents=True, exist_ok=True)
     for window_size in WINDOW_SIZES:
         print(f"\n=== window_size={window_size} ===")
         train = load_sims(window_size, N_TRAIN, "train")

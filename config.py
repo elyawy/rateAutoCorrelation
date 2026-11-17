@@ -25,8 +25,8 @@ CODEML_TIMEOUT_REAL = 60
 SIMULATION_SEED = 0
 TORCH_SEED = 0
 
-SIMULATED_DATA_DIR = str((REPO_ROOT / "simulated_data").resolve())
-CODEML_RUNS_DIR = str((REPO_ROOT / "codeml_runs").resolve())
+SIMULATED_DATA_DIR = DATA_DIR / "simulated_data"
+CODEML_RUNS_DIR = DATA_DIR / "codeml_runs"
 RESULTS_DIR = str((REPO_ROOT / "results").resolve())
 REAL_RESULTS_DIR = str((Path(RESULTS_DIR) / "real_data").resolve())
 PLOTS_DIR = str((Path(RESULTS_DIR) / "plots").resolve())
@@ -34,7 +34,7 @@ REAL_CNN_RESULTS = str((Path(REAL_RESULTS_DIR) / "results_real_new.csv").resolve
 REAL_CODEML_RESULTS = str((Path(REAL_RESULTS_DIR) / "codeml_rho_raw.csv").resolve())
 RHO_DISTRIBUTION_PLOT = str((Path(PLOTS_DIR) / "rho_distribution_histogram.png").resolve())
 MODEL_DIR = str((REPO_ROOT / "models").resolve())
-TRAINING_SIMULATION_DIR = REPO_ROOT
+TRAINING_SIMULATION_DIR = DATA_DIR / "training_sims"
 MODEL_PATH = str((REPO_ROOT / "models" / "rho_regressor_amino_indel_trees500_gap_w1000.pt").resolve())
 
 TRAIN_ESTIMATES_CSV = (REPO_ROOT / "pipeline" / "2_training" / "inputs" / "protein_estimates_train500.csv").resolve()

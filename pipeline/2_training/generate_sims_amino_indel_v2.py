@@ -146,6 +146,7 @@ def generate_and_save(genes: list, n_samples: int, window_size: int, split: str)
         print(f"  {path} already exists, skipping")
         return
 
+    path.parent.mkdir(parents=True, exist_ok=True)
     data = generate_dataset(genes, n_samples, window_size)
     meta = {"window_size": window_size, "alpha_range": ALPHA_RANGE, "rho_range": list(RHO_RANGE),
             "estimates": str(ESTIMATES_CSV), "indel_params": str(INDEL_CSV), "split_seed": SPLIT_SEED, "split": split}
