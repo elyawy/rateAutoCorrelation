@@ -10,6 +10,7 @@ import time
 import pandas as pd
 import torch
 
+import config
 from common.features_calculator import calculate_cnn_input, calculate_scalar_features
 from common.model import RhoRegressor
 
@@ -31,9 +32,9 @@ def read_fasta(path):
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate the trained CNN on real MSAs")
-    parser.add_argument("--msa-dir", type=str, default="data/no_sync/msas")
-    parser.add_argument("--weights", type=str, default="models/rho_regressor_amino_indel_trees500_gap_w1000.pt")
-    parser.add_argument("--out", type=str, default="data/results_real_new.csv")
+    parser.add_argument("--msa-dir", type=str, default=str(config.REAL_MSA_DIR))
+    parser.add_argument("--weights", type=str, default=config.MODEL_PATH)
+    parser.add_argument("--out", type=str, default=str(pathlib.Path(config.RESULTS_DIR) / "real_data" / "results_real_new.csv"))
     args = parser.parse_args()
 
     model = RhoRegressor()

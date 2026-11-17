@@ -10,7 +10,7 @@ Compare ground truth values with inferred values and compute:
 import pathlib
 import pandas as pd
 import numpy as np
-import benchmarks.codeml_benchmark.config as config
+import config
 
 def load_ground_truth(simulated_data_dir):
     """

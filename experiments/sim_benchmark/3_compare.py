@@ -19,7 +19,7 @@ import config
 from common.model import RhoRegressor  # sigmoid-bounded version, matches the new weights
 from common.features_calculator import calculate_cnn_input, calculate_scalar_features
 
-MODEL_PATH = pathlib.Path("models/rho_regressor_amino_indel_trees500_gap_w1000.pt")
+MODEL_PATH = pathlib.Path(config.MODEL_PATH)
 ALPHABET_SIZE = 20
 MIN_VARIABLE_SITES = 10  # alignments with fewer variable columns are excluded from the stats
 
@@ -67,7 +67,10 @@ def main():
     truth["codeml_rho"] = codeml_rho
     truth["n_variable"] = n_variable
     truth["regressor_time"] = reg_time
-    truth.to_csv("results.csv", index=False)
+    output_path = pathlib.Path(config.RESULTS_DIR) / "sim_benchmark" / "results.csv"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    truth.to_csv(output_path, index=False)
+    print(f"wrote {output_path}")
 
     print(f"codeml failed/unparsed: {truth['codeml_rho'].isna().sum()}/{len(truth)}")
     ok = truth.dropna(subset=["codeml_rho"])

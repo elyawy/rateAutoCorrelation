@@ -25,6 +25,7 @@ from msasim import (ALPHABET_CODES, MODEL_CODES, ReplacementModelSpec,
                     SimProtocol, SiteRateModelSpec, Simulator)
 from msasim.constants import SITE_RATE_MODELS
 from msasim.distributions import ZipfDistribution
+import config
 
 ROOT_LEN = 500
 GAMMA_CATEGORIES = 8
@@ -177,11 +178,11 @@ def run_sample(job):
 def main():
     ap = argparse.ArgumentParser()
     # defaults are relative to the repo root (run the script from there)
-    ap.add_argument("--tree", default="data/reference_tree.nwk")
-    ap.add_argument("--codeml", default="bins/paml-4.10.10-linux-x86_64/bin/codeml")
-    ap.add_argument("--lg-dat", default="bins/paml-4.10.10-linux-x86_64/dat/lg.dat")
-    ap.add_argument("--template", default="benchmarks/codeml_benchmark/codeml_template.ctl")
-    ap.add_argument("--out-dir", default="data/no_indel_experiment")
+    ap.add_argument("--tree", default=str(config.DATA_DIR / "reference_tree.nwk"))
+    ap.add_argument("--codeml", default=config.CODEML_EXECUTABLE)
+    ap.add_argument("--lg-dat", default=config.MODELDAT_FILE)
+    ap.add_argument("--template", default=config.CODEML_TEMPLATE)
+    ap.add_argument("--out-dir", default=str(config.DATA_DIR / "no_indel_experiment"))
     ap.add_argument("--n", type=int, default=5)
     ap.add_argument("--alpha", type=float, default=0.5)
     ap.add_argument("--seed", type=int, default=1)

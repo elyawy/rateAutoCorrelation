@@ -15,6 +15,12 @@ The repository also supports RAxML-ng from `bins/raxml-ng`. Raw OrthoMaM trees a
 MSAs belong under the configured data directory; generated simulations and codeml
 runs are reproducible outputs and are not committed.
 
+After setting the Zenodo record ID in `config.py`, fetch verified inputs with:
+
+```bash
+python scripts/download_data.py
+```
+
 ## Pipeline overview
 
 1. `pipeline/1_data_prep/` prepares trees, alignments, and renamed taxa.

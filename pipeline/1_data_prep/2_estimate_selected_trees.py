@@ -16,15 +16,16 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 from Bio import Phylo
+import config
 
 from msa_cleaning import clean_alignment, find_alignments, read_records
 
-SELECTED_CSV = Path("data/selected_msas.csv")
-TREE_DIR = Path("data/raw/trees")  # {gene}_NT_AL.rootree
-RAXML_PATH = Path("bins/raxml-ng")
-OUTPUT = Path("data/protein_estimates.csv")
-MSA_OUTPUT = Path("data/protein_msas.parquet")
-FAILURE_LOG = Path("data/protein_estimates_failures.csv")
+SELECTED_CSV = config.DATA_DIR / "selected_msas.csv"
+TREE_DIR = config.RAW_TREE_DIR  # {gene}_NT_AL.rootree
+RAXML_PATH = Path(config.RAXML_ROOT) / "raxml-ng"
+OUTPUT = config.REAL_ESTIMATES_CSV
+MSA_OUTPUT = config.DATA_DIR / "no_sync" / "protein_msas.parquet"
+FAILURE_LOG = config.DATA_DIR / "protein_estimates_failures.csv"
 MODEL = "LG+G8"
 N_WORKERS = 6
 RAXML_TIMEOUT = 3600  # seconds per gene

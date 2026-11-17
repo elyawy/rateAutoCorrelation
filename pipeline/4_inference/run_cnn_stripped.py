@@ -2,15 +2,18 @@ import re, sys, pathlib
 import numpy as np, pandas as pd, torch
 from torch import nn
 
-
+import config
 from common.features_calculator import calculate_cnn_input, calculate_scalar_features
 from common.model import RhoRegressor
-SAMPLE = "data/random_sample_200.csv"
-STATS = "data/real_strip_stats.csv"
-RUNS = {"gapped": "data/no_sync/codeml_runs_real_gapped", "stripped": "data/no_sync/codeml_runs_real_stripped"}
-MSAS = {"gapped": "data/no_sync/real_gapped", "stripped": "data/no_sync/real_stripped"}
-WEIGHTS = "models/rho_regressor_amino_indel_trees500_gap_w1000.pt"
-OUT = "data/results_real_stripped_new.csv"
+SAMPLE = str(config.DATA_DIR / "random_sample_200.csv")
+STATS = str(config.REPO_ROOT / "results" / "stripped_core" / "real_strip_stats.csv")
+RUNS = {
+    "gapped": str(config.REAL_GAPPED_CODEML_RUNS_DIR),
+    "stripped": str(config.DATA_DIR / "no_sync" / "codeml_runs_real_stripped"),
+}
+MSAS = {"gapped": str(config.DATA_DIR / "real_gapped"), "stripped": str(config.REAL_STRIPPED_MSA_DIR)}
+WEIGHTS = config.MODEL_PATH
+OUT = str(config.REPO_ROOT / "results" / "stripped_core" / "results_real_stripped_new.csv")
 CAP = 0.989
 
 def codeml_rho(run, g):

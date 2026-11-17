@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import random
+import re
 from pathlib import Path
 
 SPLIT_SEED = 0
@@ -43,10 +44,15 @@ def load_genes(estimates_csv, indel_csv):
             if alpha_value is None:
                 raise KeyError(f"alpha or gamma_alpha not found in {estimates_path}")
 
-            gene_entry = dict(row)
-            gene_entry["gene"] = gene_key
-            gene_entry["alpha"] = float(alpha_value)
-            genes.append(gene_entry)
+            gene_entry = {
+                "newick": re.sub(r"\d+\.\d+:", ":", row["newick"]),
+                "alpha": float(alpha_value),
+                **{
+                    key: float(indel_by_gene[gene_key][key])
+                    for key in ("ins_rate", "del_rate", "len_ins", "len_del", "root")
+                },
+            }
+            genes.append((gene_key, gene_entry))
 
     return genes
 
@@ -60,7 +66,7 @@ def held_out_genes(genes, split_seed=SPLIT_SEED, test_gene_fraction=TEST_GENE_FR
     rng = random.Random(split_seed)
     rng.shuffle(gene_list)
 
-    n_test = int(round(len(gene_list) * test_gene_fraction))
+    n_test = int(len(gene_list) * test_gene_fraction)
     n_test = max(1, min(n_test, len(gene_list) - 1)) if len(gene_list) > 1 else 0
     test_genes = gene_list[:n_test]
     train_genes = gene_list[n_test:]

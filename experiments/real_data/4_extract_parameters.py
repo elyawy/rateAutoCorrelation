@@ -13,7 +13,7 @@ Save to results/inferred_parameters.csv
 import pathlib
 import re
 import pandas as pd
-import benchmarks.codeml_benchmark.config as config
+import config
 
 def parse_codeml_output(mlb_file):
     """

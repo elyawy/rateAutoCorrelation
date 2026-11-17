@@ -12,10 +12,8 @@ Output per sim in SIMULATED_DATA_DIR/sim_XXXX_a<alpha>_r<rho>_s<scale>/:
 Plus truth.csv with all true parameters.
 """
 
-import csv
 import pathlib
 import random
-import re
 
 from ete3 import Tree
 from msasim import (
@@ -30,10 +28,11 @@ from msasim.constants import SITE_RATE_MODELS
 from msasim.distributions import ZipfDistribution
 
 import config
+from common.genes import held_out_genes, load_genes
 
 # gene split: keep in sync with train_rho_regressor_amino_indel_v2.py / generate_sims_amino_indel_v2.py
-ESTIMATES_CSV = pathlib.Path("protein_estimates_train500.csv")  # gene, newick, alpha
-INDEL_CSV = pathlib.Path("data/no_sync/indel_estimates_2.csv")  # per-gene indel model
+ESTIMATES_CSV = config.TRAIN_ESTIMATES_CSV
+INDEL_CSV = config.INDEL_PARAMS_CSV
 SPLIT_SEED = 0
 TEST_GENE_FRACTION = 0.1
 
@@ -45,34 +44,6 @@ MSA_LENGTH = 1000
 GAMMA_CATEGORIES = 8
 MAX_INDEL_LENGTH = 150  # truncation of the indel length distributions, as in training
 SEED = 0
-
-
-def load_genes():
-    """[(gene, {newick, alpha, ins_rate, del_rate, len_ins, len_del, root})] for genes with a tree and an indel model.
-
-    Same filtering and order as the training script, so the shuffle below gives the same split.
-    """
-    indel = {row["name"].removesuffix(".fasta"): row for row in csv.DictReader(open(INDEL_CSV))}
-    genes = []
-    for row in csv.DictReader(open(ESTIMATES_CSV)):
-        ind = indel.get(row["gene"])
-        if ind is None:
-            continue
-        alpha_col = next((c for c in ("alpha", "gamma_alpha") if c in row), None)
-        if alpha_col is None:
-            raise KeyError(f"no alpha column in {ESTIMATES_CSV} (columns: {list(row)})")
-        genes.append((row["gene"], {
-            "newick": re.sub(r"\d+\.\d+:", ":", row["newick"]),  # drop support values
-            "alpha": float(row[alpha_col]),
-            **{k: float(ind[k]) for k in ("ins_rate", "del_rate", "len_ins", "len_del", "root")},
-        }))
-    return genes
-
-
-def held_out_genes():
-    genes = load_genes()
-    random.Random(SPLIT_SEED).shuffle(genes)
-    return genes[:int(len(genes) * TEST_GENE_FRACTION)]
 
 
 def pick_clade(genes):
@@ -135,7 +106,11 @@ def write_phylip(path, rows):
 
 def main():
     random.seed(SEED)
-    genes = held_out_genes()
+    genes = held_out_genes(
+        load_genes(config.TRAIN_ESTIMATES_CSV, config.INDEL_PARAMS_CSV),
+        split_seed=SPLIT_SEED,
+        test_gene_fraction=TEST_GENE_FRACTION,
+    )[1]
     print(f"{len(genes)} held-out genes")
     out_root = pathlib.Path(config.SIMULATED_DATA_DIR)
     out_root.mkdir(parents=True, exist_ok=True)

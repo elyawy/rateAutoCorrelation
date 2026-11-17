@@ -20,10 +20,10 @@ TREE_NAME=$(basename "$TREE_DIR")
 
 echo "Processing tree: $TREE_NAME"
 
-srun python 2_run_codeml.py --tree "$TREE_NAME"
+srun python pipeline/3_codeml/run_codeml.py --mode sim --sim "$TREE_NAME"
 
 # to run this script as an array job, use the following command:
 # Make sure to create the slurm_logs directory before running the job:
 # mkdir -p slurm_logs
 # Then submit the job with:
-# sbatch --array=0-$(($(ls -d simulated_data/*/ | wc -l) - 1)) run_codeml_array.sh
+# sbatch --array=0-$(($(ls -d simulated_data/*/ | wc -l) - 1)) pipeline/3_codeml/run_codeml_array.sh

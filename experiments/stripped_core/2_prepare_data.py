@@ -1,7 +1,11 @@
 import numpy as np, pandas as pd, os
 
-MSA_DIR, SAMPLE, CUTOFF = "data/msas", "data/random_sample_200.csv", 0.5
-OUT = {"gapped": "data/real_gapped", "stripped": "data/real_stripped"}
+import config
+
+MSA_DIR = str(config.REAL_MSA_DIR)
+SAMPLE = str(config.DATA_DIR / "random_sample_200.csv")
+CUTOFF = 0.5
+OUT = {"gapped": str(config.DATA_DIR / "real_gapped"), "stripped": str(config.REAL_STRIPPED_MSA_DIR)}
 for d in OUT.values():
     os.makedirs(d, exist_ok=True)
 
@@ -31,4 +35,4 @@ for g in pd.read_csv(SAMPLE).gene:
     rows.append((g, msa.shape[1], int(keep.sum()), gap.mean(), 1 - keep.mean()))
 
 pd.DataFrame(rows, columns=["gene", "n_cols", "n_cols_stripped", "gap_frac", "stripped_frac"]) \
-  .to_csv("data/real_strip_stats.csv", index=False)
+  .to_csv(config.REPO_ROOT / "results" / "stripped_core" / "real_strip_stats.csv", index=False)

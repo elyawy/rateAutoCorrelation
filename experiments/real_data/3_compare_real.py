@@ -12,14 +12,15 @@ import numpy as np
 import pandas as pd
 import torch
 
+import config
 from common.model import RhoRegressor
 from common.features_calculator import calculate_cnn_input, calculate_scalar_features
 
-MODEL_PATH = "models/rho_regressor_amino_indel_w1000.pt"
+MODEL_PATH = config.MODEL_PATH
 ALPHABET_SIZE = 20
-MSA_DIR = pathlib.Path("data/msas")
-RUNS_DIR = pathlib.Path("data/codeml_runs_real")
-ESTIMATES_CSV = pathlib.Path("data/protein_estimates.csv")
+MSA_DIR = pathlib.Path(config.REAL_MSA_DIR)
+RUNS_DIR = pathlib.Path(config.REAL_CODEML_RUNS_DIR)
+ESTIMATES_CSV = pathlib.Path(config.REAL_ESTIMATES_CSV)
 
 
 def read_fasta_seqs(path):
@@ -65,7 +66,10 @@ def main():
     df = pd.DataFrame(rows)
     est = pd.read_csv(ESTIMATES_CSV, usecols=["gene", "alpha"]).astype({"gene": str})
     df = df.merge(est, on="gene", how="left")
-    df.to_csv("results_real.csv", index=False)
+    output_path = pathlib.Path(config.RESULTS_DIR) / "real_data" / "results_real.csv"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(output_path, index=False)
+    print(f"wrote {output_path}")
 
     print(f"codeml failed/unparsed: {df['codeml_rho'].isna().sum()}/{len(df)}")
     ok = df.dropna(subset=["codeml_rho"])

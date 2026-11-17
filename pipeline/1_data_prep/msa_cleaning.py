@@ -14,9 +14,10 @@ import zipfile
 from pathlib import Path
 
 import numpy as np
+import config
 
-AA_DIR = Path("data/raw/msas")  # *.aln.zip or *.aln, searched recursively
-TREE_DIR = Path("data/raw/trees")  # {gene}_NT_AL.rootree
+AA_DIR = config.RAW_MSA_DIR  # *.aln.zip or *.aln, searched recursively
+TREE_DIR = config.RAW_TREE_DIR  # {gene}_NT_AL.rootree
 MAX_DROPPED_FRACTION = 0.2
 MIN_TAXA = 4
 

@@ -9,6 +9,7 @@ Creates:
 import pathlib
 from ete3 import Tree
 import csv
+import config
 
 def rename_tree_taxa(tree_path, output_dir):
     """
@@ -53,8 +54,8 @@ def rename_tree_taxa(tree_path, output_dir):
 
 def main():
     """Process all tree files."""
-    trees_dir = pathlib.Path("trees")
-    output_dir = pathlib.Path("trees_renamed")
+    trees_dir = config.DATA_DIR / "trees"
+    output_dir = config.DATA_DIR / "trees_renamed"
     
     if not trees_dir.exists():
         print(f"Error: {trees_dir}/ does not exist")

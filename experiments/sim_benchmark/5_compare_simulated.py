@@ -14,7 +14,9 @@ import pandas as pd
 import torch
 
 HERE = pathlib.Path(__file__).resolve().parent
-spec = importlib.util.spec_from_file_location("compare_real", HERE / "3_compare_real.py")
+spec = importlib.util.spec_from_file_location(
+    "compare_real", HERE.parent / "real_data" / "3_compare_real.py"
+)
 cr = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cr)
 

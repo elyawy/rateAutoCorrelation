@@ -9,11 +9,12 @@ import re
 from pathlib import Path
 
 import pyarrow.parquet as pq
+import config
 
-ESTIMATES_CSV = Path("data/protein_estimates.csv")
-MSA_PARQUET = Path("data/protein_msas.parquet")
-TREE_DIR = Path("data/trees")
-MSA_DIR = Path("data/msas")
+ESTIMATES_CSV = Path(config.REAL_ESTIMATES_CSV)
+MSA_PARQUET = config.DATA_DIR / "no_sync" / "protein_msas.parquet"
+TREE_DIR = config.DATA_DIR / "trees"
+MSA_DIR = config.REAL_MSA_DIR
 
 
 def main():

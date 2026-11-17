@@ -20,16 +20,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from Bio import Phylo, SeqIO
+import config
 
 # ---- EDIT THESE ----
-DATA_DIR = Path("data")
+DATA_DIR = Path(config.DATA_DIR)
 GAPPED_DIR = DATA_DIR / "real_gapped"                      # <gene>.fasta
-TREE_DIR = DATA_DIR / "codeml_runs_real_gapped"            # <gene>/tree.nwk
+TREE_DIR = Path(config.REAL_GAPPED_CODEML_RUNS_DIR)        # <gene>/tree.nwk
 GENE_LIST = DATA_DIR / "random_sample_200.csv"             # column "gene"
 OUT_DIR = DATA_DIR / "core_genes_codeml"
-RAXML = Path("bins/raxml-ng")
-CODEML = Path("bins/paml-4.10.10-linux-x86_64/bin/codeml")
-LG_DAT = Path("bins/paml-4.10.10-linux-x86_64/dat/lg.dat")
+RAXML = Path(config.RAXML_ROOT) / "raxml-ng"
+CODEML = Path(config.CODEML_EXECUTABLE)
+LG_DAT = Path(config.MODELDAT_FILE)
 # --------------------
 CUTOFF = 0.5
 MODEL = "LG+G8"

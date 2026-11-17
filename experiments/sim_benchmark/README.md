@@ -6,6 +6,9 @@ Inputs: generated simulation files, codeml outputs, and the trained model.
 
 Command: `python experiments/sim_benchmark/3_compare.py`
 
-Output: summary metrics in `results/sim_benchmark/`.
+Output: `results/sim_benchmark/results.csv`.
 
-Paper link: sim benchmark comparison / Figure X.
+Expected headline: 139/150 usable codeml runs; CNN RMSE 0.052 and correlation
+0.983; codeml RMSE 0.045 and correlation 0.988.
+
+Paper link: simulated benchmark comparison.

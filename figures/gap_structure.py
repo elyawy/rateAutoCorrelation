@@ -1,6 +1,7 @@
 import numpy as np, pandas as pd
+import config
 
-MSA_DIR, SAMPLE = "data/msas", "data/random_sample_200.csv"
+MSA_DIR, SAMPLE = str(config.REAL_MSA_DIR), str(config.DATA_DIR / "random_sample_200.csv")
 
 def read_fasta(path):
     seqs, cur = [], []

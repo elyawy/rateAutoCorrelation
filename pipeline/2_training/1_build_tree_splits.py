@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import config
 
 N_TRAIN = 500
 N_TEST = 200
@@ -30,7 +31,12 @@ def tree_length(newick: str) -> float:
 
 def main():
     estimates_path, indel_path = Path(sys.argv[1]), Path(sys.argv[2])
-    out_dir = Path(sys.argv[3]) if len(sys.argv) > 3 else Path(".")
+    out_dir = (
+        Path(sys.argv[3])
+        if len(sys.argv) > 3
+        else config.REPO_ROOT / "pipeline" / "2_training" / "inputs"
+    )
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(estimates_path)
     indel_genes = set(pd.read_csv(indel_path)["name"].str.removesuffix(".fasta"))
