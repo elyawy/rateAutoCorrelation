@@ -11,9 +11,9 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import config
 
-ESTIMATES_CSV = Path(config.REAL_ESTIMATES_CSV)
-MSA_PARQUET = config.DATA_DIR / "no_sync" / "protein_msas.parquet"
-TREE_DIR = config.DATA_DIR / "trees"
+ESTIMATES_CSV = config.REAL_ESTIMATES_CSV
+MSA_PARQUET = config.REAL_MSAS_PARQUET
+TREE_DIR = config.REAL_TREE_DIR
 MSA_DIR = config.REAL_MSA_DIR
 
 
