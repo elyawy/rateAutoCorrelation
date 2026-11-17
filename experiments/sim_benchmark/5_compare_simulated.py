@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 import torch
 
+import config
+
 HERE = pathlib.Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location(
     "compare_real", HERE.parent / "real_data" / "3_compare_real.py"
@@ -20,9 +22,10 @@ spec = importlib.util.spec_from_file_location(
 cr = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cr)
 
-SIM_MSA_DIR = pathlib.Path("sim_msas")
-RUNS_DIR = pathlib.Path("codeml_runs_sim")
-TRUTH_CSV = pathlib.Path("sim_truth.csv")
+SIM_MSA_DIR = pathlib.Path(config.SIMULATED_DATA_DIR)
+RUNS_DIR = pathlib.Path(config.CODEML_RUNS_DIR)
+TRUTH_CSV = pathlib.Path(config.SIMULATED_DATA_DIR) / "sim_truth.csv"
+RESULTS_CSV = pathlib.Path(config.RESULTS_DIR) / "sim_benchmark" / "results_sim.csv"
 
 
 def summarize(g):
@@ -51,7 +54,7 @@ def main():
         codeml_rho.append(cr.parse_codeml_rho(RUNS_DIR / gene / "mlb"))
     truth["nn_rho"] = nn_rho
     truth["codeml_rho"] = codeml_rho
-    truth.to_csv("results_sim.csv", index=False)
+    truth.to_csv(RESULTS_CSV, index=False)
 
     print(f"codeml failed/unparsed: {truth['codeml_rho'].isna().sum()}/{len(truth)}")
     ok = truth.dropna(subset=["codeml_rho"])
