@@ -11,6 +11,9 @@ pip install -e .
 ```
 
 The project expects PAML in `bins/paml-4.10.10-linux-x86_64` and data in `data/` (or a custom directory exported as `RHO_DATA_DIR`).
+The repository also supports RAxML-ng from `bins/raxml-ng`. Raw OrthoMaM trees and
+MSAs belong under the configured data directory; generated simulations and codeml
+runs are reproducible outputs and are not committed.
 
 ## Pipeline overview
 
@@ -35,6 +38,10 @@ The project expects PAML in `bins/paml-4.10.10-linux-x86_64` and data in `data/`
 - `results/indel_experiment/` — indel awareness benchmark
 - `results/shuffle_control/` — shuffled-column control
 - `results/alignment_effect/` — MAFFT / alignment sensitivity analysis
+
+The legacy simulation workflow is now split across `experiments/sim_benchmark/`
+and `pipeline/3_codeml/`. Its generated outputs are `results/sim_benchmark/`
+summaries plus ignored simulation and codeml-run directories.
 
 ## Notes
 
