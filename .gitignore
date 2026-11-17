@@ -5,7 +5,8 @@ __pycache__/
 .venv/
 # generated / large data
 bins/
-data/
+data/*
+!data/MANIFEST.csv
 codeml_runs/
 simulated_data/
 training_data/
